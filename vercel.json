@@ -1,0 +1,39 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "frontend/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
+    },
+    {
+      "src": "backend/api/**/*.ts",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/backend/api/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/frontend/$1"
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/news-fetcher",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/trending-updater",
+      "schedule": "*/5 * * * *"
+    }
+  ],
+  "env": {
+    "NODE_ENV": "production"
+  }
+}
