@@ -1,26 +1,11 @@
 {
   "version": 2,
-  "builds": [
+  "buildCommand": "cd frontend && npm install && npm run build",
+  "outputDirectory": "frontend/dist",
+  "rewrites": [
     {
-      "src": "frontend/package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist"
-      }
-    },
-    {
-      "src": "backend/api/**/*.ts",
-      "use": "@vercel/node"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "/backend/api/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/frontend/$1"
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
     }
   ],
   "crons": [
@@ -32,8 +17,5 @@
       "path": "/api/cron/trending-updater",
       "schedule": "*/5 * * * *"
     }
-  ],
-  "env": {
-    "NODE_ENV": "production"
-  }
+  ]
 }

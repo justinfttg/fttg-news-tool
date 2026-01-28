@@ -27,54 +27,58 @@ export * from './database.types';
 dotenv.config({ path: '.env.local' });
 dotenv.config(); // fallback to .env
 
-const SUPABASE_URL = process.env.SUPABASE_URL || '';
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || '';
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '';
-const DATABASE_URL = process.env.DATABASE_URL || '';
+// ---------------------------------------------------------------------------
+// Supabase Clients — lazy-initialized to support Vercel serverless functions
+// where process.env is populated after module bundling.
+// ---------------------------------------------------------------------------
 
-function validateEnv(): void {
-  const required: Record<string, string> = {
-    SUPABASE_URL,
-    SUPABASE_SERVICE_KEY,
-  };
-  const missing = Object.entries(required)
-    .filter(([, v]) => !v)
-    .map(([k]) => k);
+let _supabase: SupabaseClient | null = null;
+let _supabaseAnon: SupabaseClient | null = null;
 
-  if (missing.length > 0 && process.env.NODE_ENV !== 'test') {
-    console.warn(`[db] Missing required env vars: ${missing.join(', ')}`);
-  }
-
-  // Optional but useful warnings
-  if (!SUPABASE_ANON_KEY && process.env.NODE_ENV !== 'test') {
-    console.warn('[db] SUPABASE_ANON_KEY not set — supabaseAnon client will not work');
-  }
-  if (!DATABASE_URL && process.env.NODE_ENV !== 'test') {
-    console.warn('[db] DATABASE_URL not set — raw pg pool unavailable');
-  }
+function getSupabaseUrl(): string {
+  return process.env.SUPABASE_URL || '';
 }
-validateEnv();
 
-// ---------------------------------------------------------------------------
-// Supabase Clients (primary data access — works over HTTPS)
-// ---------------------------------------------------------------------------
+function getSupabaseServiceKey(): string {
+  return process.env.SUPABASE_SERVICE_KEY || '';
+}
+
+function getSupabaseAnonKey(): string {
+  return process.env.SUPABASE_ANON_KEY || '';
+}
 
 /** Service-role client — full table access, bypasses RLS. Server-side only. */
-export const supabase: SupabaseClient = createClient(
-  SUPABASE_URL,
-  SUPABASE_SERVICE_KEY
-);
+export function getSupabase(): SupabaseClient {
+  if (!_supabase) {
+    _supabase = createClient(getSupabaseUrl(), getSupabaseServiceKey());
+  }
+  return _supabase;
+}
 
 /** Anon-key client — respects RLS, safe to expose to the frontend. */
-export const supabaseAnon: SupabaseClient = createClient(
-  SUPABASE_URL,
-  SUPABASE_ANON_KEY || SUPABASE_SERVICE_KEY // fall back to service key if anon not set
-);
+export function getSupabaseAnon(): SupabaseClient {
+  if (!_supabaseAnon) {
+    const anonKey = getSupabaseAnonKey() || getSupabaseServiceKey();
+    _supabaseAnon = createClient(getSupabaseUrl(), anonKey);
+  }
+  return _supabaseAnon;
+}
+
+// Backwards-compatible exports — these are getters that create on first access
+export const supabase: SupabaseClient = new Proxy({} as SupabaseClient, {
+  get(_target, prop) {
+    return (getSupabase() as any)[prop];
+  },
+});
+
+export const supabaseAnon: SupabaseClient = new Proxy({} as SupabaseClient, {
+  get(_target, prop) {
+    return (getSupabaseAnon() as any)[prop];
+  },
+});
 
 /**
  * Typed Supabase client — provides compile-time column/table checking.
- * Use this when writing new code that benefits from autocomplete.
- * Existing code can continue using the untyped `supabase` export.
  */
 export const db = supabase as unknown as SupabaseClient<Database>;
 
@@ -89,7 +93,7 @@ let _pool: Pool | null = null;
 
 function createPool(): Pool {
   const config: PoolConfig = {
-    connectionString: DATABASE_URL,
+    connectionString: process.env.DATABASE_URL || '',
     ssl: { rejectUnauthorized: false },
     max: 10,
     idleTimeoutMillis: 30000,
@@ -114,7 +118,7 @@ function createPool(): Pool {
 /** Lazily initialised pg pool. Recreated automatically after fatal errors. */
 export function getPool(): Pool {
   if (!_pool) {
-    if (!DATABASE_URL) {
+    if (!process.env.DATABASE_URL) {
       throw new Error('[db/pg] DATABASE_URL is not configured — cannot create pool');
     }
     _pool = createPool();
@@ -214,7 +218,7 @@ export async function testSupabaseConnection(): Promise<boolean> {
 
 /** Test raw pg connection with retry. Returns true if SELECT 1 succeeds. */
 export async function testPgConnection(): Promise<boolean> {
-  if (!DATABASE_URL) {
+  if (!process.env.DATABASE_URL) {
     console.warn('[db/pg] DATABASE_URL not configured — skipping pg test');
     return false;
   }
@@ -236,7 +240,7 @@ export async function testConnection(): Promise<boolean> {
   if (!supabaseOk) return false;
 
   // pg is best-effort — don't fail the health check if it's unavailable
-  if (DATABASE_URL) {
+  if (process.env.DATABASE_URL) {
     const pgOk = await testPgConnection();
     if (!pgOk) {
       console.warn('[db] pg connection unavailable — Supabase REST will be used exclusively');
