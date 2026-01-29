@@ -73,6 +73,7 @@ export interface NewsStory {
   is_trending: boolean;
   trend_score: number;
   published_at: string | null;
+  thumbnail_url: string | null;
 }
 
 export interface StoryAngle {
@@ -83,4 +84,21 @@ export interface StoryAngle {
   angle_data: Record<string, any>;
   audience_care_statement: string;
   status: 'draft' | 'approved' | 'archived';
+}
+
+export interface AudienceProfile {
+  id: string;
+  project_id: string;
+  name: string;
+  age_range: string | null;
+  location: string | null;
+  education_level: string | null;
+  values: string[];
+  fears: string[];
+  aspirations: string[];
+  preferred_tone: 'investigative' | 'educational' | 'balanced' | 'provocative' | 'conversational' | null;
+  depth_preference: 'surface' | 'medium' | 'deep_dive' | null;
+  political_sensitivity: number | null;
+  created_at: string;
+  updated_at: string;
 }

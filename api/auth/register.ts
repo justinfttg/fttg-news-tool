@@ -1,1 +1,7 @@
-export { default } from '../../backend/api/auth/register';
+import { cors } from '../_cors';
+import handler from '../../backend/api/auth/register';
+
+export default async function (req: any, res: any) {
+  if (cors(req, res)) return;
+  return handler(req, res);
+}

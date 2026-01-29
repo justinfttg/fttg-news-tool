@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { scrapeAllSources } from '../src/services/news-scraper/rss-scraper';
+import { scrapeAllSources, processExistingStoriesWithAI } from '../src/services/news-scraper/rss-scraper';
 import { verifyToken } from '../src/services/auth/jwt';
 
 /**
@@ -48,8 +48,12 @@ export default async function handler(req: Request, res: Response) {
 
     const result = await scrapeAllSources(region);
 
+    // Also process existing stories that need AI summaries (backfill)
+    // Process up to 100 stories per run to catch up on backlog
+    const backfilled = await processExistingStoriesWithAI(100);
+
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-    console.log(`[news-fetcher] Complete in ${elapsed}s — inserted: ${result.inserted}, skipped: ${result.skipped}, errors: ${result.errors.length}`);
+    console.log(`[news-fetcher] Complete in ${elapsed}s — inserted: ${result.inserted}, skipped: ${result.skipped}, backfilled: ${backfilled}, errors: ${result.errors.length}`);
 
     return res.status(200).json({
       success: true,
@@ -57,6 +61,8 @@ export default async function handler(req: Request, res: Response) {
       totalFetched: result.totalFetched,
       inserted: result.inserted,
       skipped: result.skipped,
+      aiProcessed: result.aiProcessed,
+      aiBackfilled: backfilled,
       sourceCount: result.sources.length,
       errors: result.errors,
     });

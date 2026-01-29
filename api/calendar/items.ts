@@ -1,4 +1,5 @@
-import { Request, Response } from 'express';
+import { cors } from '../_cors';
+import { authenticate } from '../_auth';
 import {
   listHandler,
   createHandler,
@@ -6,7 +7,14 @@ import {
   deleteHandler,
 } from '../../backend/api/calendar/items';
 
-export default async function handler(req: Request, res: Response) {
+export default async function handler(req: any, res: any) {
+  if (cors(req, res)) return;
+
+  const isAuthenticated = await authenticate(req);
+  if (!isAuthenticated) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+
   switch (req.method) {
     case 'GET':
       return listHandler(req, res);

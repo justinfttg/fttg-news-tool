@@ -30,6 +30,12 @@ export function ProjectDetailPage() {
         >
           News Library
         </Link>
+        <Link
+          to={`/project/${id}/audience`}
+          className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700"
+        >
+          Audience
+        </Link>
       </div>
 
       {id ? (

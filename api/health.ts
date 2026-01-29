@@ -1,6 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
+import { cors } from './_cors';
 
 export default async function handler(req: any, res: any) {
+  if (cors(req, res)) return;
+
   try {
     const url = process.env.SUPABASE_URL || '';
     const key = process.env.SUPABASE_SERVICE_KEY || '';

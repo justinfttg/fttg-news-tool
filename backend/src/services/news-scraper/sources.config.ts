@@ -2,7 +2,7 @@ export interface RSSSource {
   name: string;
   url: string;
   category: string;
-  region: 'asia' | 'southeast_asia' | 'east_asia' | 'apac' | 'global';
+  region: 'asia' | 'southeast_asia' | 'east_asia' | 'apac' | 'global' | 'singapore' | 'china';
 }
 
 export const CATEGORIES = [
@@ -23,16 +23,25 @@ export const CATEGORIES = [
 export type Category = (typeof CATEGORIES)[number];
 
 export const RSS_SOURCES: Record<string, RSSSource[]> = {
+  singapore: [
+    { name: 'CNA Singapore', url: 'https://www.channelnewsasia.com/api/v1/rss-outbound-feed?_format=xml&category=10416', category: 'General', region: 'singapore' },
+    { name: 'The Straits Times SG', url: 'https://www.straitstimes.com/news/singapore/rss.xml', category: 'General', region: 'singapore' },
+    { name: 'The Business Times SG', url: 'https://www.businesstimes.com.sg/rss/singapore', category: 'Business', region: 'singapore' },
+  ],
+  china: [
+    { name: 'SCMP China', url: 'https://www.scmp.com/rss/4/feed', category: 'General', region: 'china' },
+    { name: 'China Daily', url: 'https://www.chinadaily.com.cn/rss/china_rss.xml', category: 'General', region: 'china' },
+    { name: 'Global Times', url: 'https://www.globaltimes.cn/rss/outbrain.xml', category: 'General', region: 'china' },
+  ],
   asia: [
     { name: 'CNA Asia', url: 'https://www.channelnewsasia.com/api/v1/rss-outbound-feed?_format=xml&category=6511', category: 'General', region: 'asia' },
     { name: 'Nikkei Asia', url: 'https://asia.nikkei.com/rss', category: 'Business', region: 'asia' },
     { name: 'Asia Times', url: 'https://asiatimes.com/feed/', category: 'General', region: 'asia' },
   ],
   southeast_asia: [
-    { name: 'CNA Singapore', url: 'https://www.channelnewsasia.com/api/v1/rss-outbound-feed?_format=xml&category=10416', category: 'General', region: 'southeast_asia' },
-    { name: 'The Straits Times', url: 'https://www.straitstimes.com/news/asia/south-east-asia/rss.xml', category: 'General', region: 'southeast_asia' },
     { name: 'Bangkok Post', url: 'https://www.bangkokpost.com/rss/data/topstories.xml', category: 'General', region: 'southeast_asia' },
     { name: 'VNExpress International', url: 'https://e.vnexpress.net/rss/news.rss', category: 'General', region: 'southeast_asia' },
+    { name: 'The Straits Times SEA', url: 'https://www.straitstimes.com/news/asia/south-east-asia/rss.xml', category: 'General', region: 'southeast_asia' },
   ],
   east_asia: [
     { name: 'NHK World', url: 'https://www3.nhk.or.jp/rss/news/cat0.xml', category: 'General', region: 'east_asia' },

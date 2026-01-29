@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { login, register } from '../../services/auth.service';
@@ -11,8 +11,15 @@ export function LoginForm() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const { setAuth } = useAuth();
+  const { setAuth, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+
+  // Navigate after auth state is updated
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/projects', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,7 +32,7 @@ export function LoginForm() {
         : await login(email, password);
 
       setAuth(result.user, result.token);
-      navigate('/projects');
+      // Navigation will happen via useEffect when isAuthenticated becomes true
     } catch (err: any) {
       setError(err.response?.data?.error || 'Authentication failed');
     } finally {

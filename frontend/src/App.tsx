@@ -7,6 +7,7 @@ import { Layout } from './components/shared/Layout';
 import { ProjectsPage } from './pages/ProjectsPage';
 import { ProjectDetailPage } from './pages/ProjectDetailPage';
 import { NewsLibraryPage } from './pages/NewsLibraryPage';
+import { AudiencePage } from './pages/AudiencePage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -30,6 +31,7 @@ export default function App() {
                 <Route path="/projects" element={<ProjectsPage />} />
                 <Route path="/project/:id/calendar" element={<ProjectDetailPage />} />
                 <Route path="/project/:id/library" element={<NewsLibraryPage />} />
+                <Route path="/project/:id/audience" element={<AudiencePage />} />
                 <Route path="/settings" element={<div>Settings (Phase 7)</div>} />
                 <Route path="/admin" element={<div>Admin (Future)</div>} />
               </Route>

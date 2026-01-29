@@ -41,7 +41,7 @@ export function AddToCalendarButton({ story, projectId }: AddToCalendarButtonPro
         onClick={() => setIsOpen(true)}
         className="text-xs font-medium text-primary-600 hover:text-primary-700 px-2 py-1 rounded hover:bg-primary-50 transition-colors"
       >
-        + Calendar
+        Mark Article
       </button>
     );
   }

@@ -112,13 +112,14 @@ export interface NewsStory {
   content: string;
   source: string;
   url: string | null;
-  region: 'asia' | 'southeast_asia' | 'east_asia' | 'apac' | 'global' | null;
+  region: 'asia' | 'southeast_asia' | 'east_asia' | 'apac' | 'global' | 'singapore' | 'china' | null;
   category: string;
   is_trending: boolean;
   social_platforms: string[];
   trend_score: number;
   published_at: string | null;
   scraped_at: string;
+  thumbnail_url: string | null;
 }
 
 export interface StoryAngle {
