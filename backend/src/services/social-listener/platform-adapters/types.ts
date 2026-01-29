@@ -1,7 +1,48 @@
 // Platform adapter types for social listener
 
+// Generic/useless hashtags to filter out - these don't indicate real trends
+export const GENERIC_HASHTAGS = new Set([
+  // Platform-specific generic tags
+  'fyp', 'foryou', 'foryoupage', 'viral', 'trending', 'trend', 'explore',
+  'reels', 'reel', 'shorts', 'short', 'tiktok', 'instagram', 'twitter', 'youtube',
+
+  // Generic engagement bait
+  'follow', 'followme', 'followforfollow', 'f4f', 'like', 'like4like', 'l4l',
+  'likeforlike', 'likes', 'comment', 'share', 'repost', 'subscribe',
+
+  // Generic content descriptors
+  'photo', 'photooftheday', 'picoftheday', 'picture', 'video', 'content',
+  'post', 'new', 'newpost', 'daily', 'today', 'now', 'live', 'update',
+
+  // Generic positive words
+  'love', 'amazing', 'awesome', 'beautiful', 'best', 'cool', 'cute', 'fun',
+  'good', 'great', 'happy', 'instagood', 'instadaily', 'instalike', 'nice',
+
+  // Generic categories (too broad)
+  'life', 'lifestyle', 'me', 'my', 'self', 'selfie', 'style', 'mood',
+  'vibes', 'goals', 'motivation', 'inspiration', 'quotes',
+
+  // Platform features
+  'story', 'stories', 'igtv', 'live', 'premiere',
+]);
+
+/**
+ * Check if a hashtag/topic is generic and should be filtered out
+ */
+export function isGenericHashtag(tag: string): boolean {
+  const normalized = tag.toLowerCase().replace(/^#/, '').trim();
+  return GENERIC_HASHTAGS.has(normalized) || normalized.length < 3;
+}
+
+/**
+ * Filter out generic hashtags from a list
+ */
+export function filterGenericHashtags(hashtags: string[]): string[] {
+  return hashtags.filter(tag => !isGenericHashtag(tag));
+}
+
 export interface SocialPost {
-  platform: 'x' | 'reddit' | 'google_trends' | 'youtube';
+  platform: 'x' | 'reddit' | 'google_trends' | 'youtube' | 'tiktok' | 'instagram';
   externalId: string;
   authorHandle: string | null;
   authorName: string | null;

@@ -3,7 +3,7 @@
 
 import Parser from 'rss-parser';
 import type { PlatformAdapter, SocialPost, TrendingTopic } from './types';
-import { normalizeTopic } from './types';
+import { normalizeTopic, isGenericHashtag } from './types';
 
 const parser = new Parser({
   timeout: 12_000,
@@ -12,14 +12,6 @@ const parser = new Parser({
     Accept: 'application/rss+xml, application/xml, text/xml, */*',
   },
 });
-
-// Known trending hashtags/topics on X (fallback)
-const TRENDING_HASHTAGS = [
-  '#Breaking', '#News', '#Trending', '#Viral', '#World',
-  '#Politics', '#Tech', '#AI', '#Crypto', '#Sports',
-  '#Entertainment', '#Music', '#Movies', '#Gaming', '#Business',
-  '#Climate', '#Science', '#Health', '#Singapore', '#Asia',
-];
 
 // Alternative X/Twitter trend sources
 const TREND_SOURCES = [
@@ -67,24 +59,30 @@ export class XAdapter implements PlatformAdapter {
 
   /**
    * Fetch trending topics from multiple sources with fallbacks
+   * Filters out generic hashtags to show only meaningful trends
    */
   async getTrending(region?: string): Promise<TrendingTopic[]> {
     // Try alternative RSS sources
     for (const source of TREND_SOURCES) {
-      const topics = await this.fetchTrendRSS(source.url, source.name);
-      if (topics.length > 0) {
-        return region ? topics.map(t => ({ ...t, region })) : topics;
+      const rawTopics = await this.fetchTrendRSS(source.url, source.name);
+      // Filter out generic hashtags
+      const qualityTopics = rawTopics.filter(t => !isGenericHashtag(t.name));
+      if (qualityTopics.length > 0) {
+        return region ? qualityTopics.map(t => ({ ...t, region })) : qualityTopics;
       }
     }
 
     // Try scraping GetDayTrends HTML as fallback
     const scrapedTopics = await this.scrapeGetDayTrends(region);
-    if (scrapedTopics.length > 0) {
-      return scrapedTopics;
+    // Filter out generic hashtags
+    const qualityScraped = scrapedTopics.filter(t => !isGenericHashtag(t.name));
+    if (qualityScraped.length > 0) {
+      return qualityScraped;
     }
 
-    // Fallback: return known trending hashtags
-    return this.generateFallbackTopics(region);
+    // No fallback with generic hashtags - return empty if no real trends found
+    console.log('[x-adapter] No quality trending topics found');
+    return [];
   }
 
   // -------------------------------------------------------------------------
@@ -194,23 +192,4 @@ export class XAdapter implements PlatformAdapter {
     }
   }
 
-  private generateFallbackTopics(region?: string): TrendingTopic[] {
-    // Generate topics from known trending hashtags
-    const regionHashtags = region === 'singapore'
-      ? ['#Singapore', '#SG', '#SGNews', ...TRENDING_HASHTAGS]
-      : region === 'china'
-        ? ['#China', '#Shanghai', '#Beijing', ...TRENDING_HASHTAGS]
-        : TRENDING_HASHTAGS;
-
-    return regionHashtags.slice(0, 20).map((hashtag, index) => ({
-      name: hashtag,
-      normalizedName: normalizeTopic(hashtag),
-      hashtag,
-      platform: 'x',
-      postCount: 100 - index * 5,
-      engagement: 10000 - index * 500,
-      url: `https://x.com/search?q=${encodeURIComponent(hashtag)}`,
-      region: region || 'global',
-    }));
-  }
 }

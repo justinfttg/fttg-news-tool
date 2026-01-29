@@ -2,7 +2,7 @@
 
 import Parser from 'rss-parser';
 import type { PlatformAdapter, SocialPost, TrendingTopic } from './types';
-import { normalizeTopic, extractHashtags } from './types';
+import { normalizeTopic, extractHashtags, filterGenericHashtags, isGenericHashtag } from './types';
 
 const parser = new Parser({
   timeout: 12_000,
@@ -105,6 +105,8 @@ export class YouTubeAdapter implements PlatformAdapter {
       for (const word of words) {
         const normalized = normalizeTopic(word);
         if (normalized.length < 3) continue;
+        // Skip generic/useless topics
+        if (isGenericHashtag(word)) continue;
 
         const existing = topicMap.get(normalized) || { name: word, count: 0 };
         existing.count += 1;
@@ -163,7 +165,7 @@ export class YouTubeAdapter implements PlatformAdapter {
           reposts: 0,
           comments: 0,
           views: 0,
-          hashtags: extractHashtags(title),
+          hashtags: filterGenericHashtags(extractHashtags(title)),
           topics: [channel.category],
           region: channel.region,
           category: channel.category,

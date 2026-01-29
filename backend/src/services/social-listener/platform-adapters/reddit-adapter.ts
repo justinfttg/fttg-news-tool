@@ -1,7 +1,7 @@
 // Reddit adapter - fetches viral posts and trending topics via public JSON API
 
 import type { PlatformAdapter, SocialPost, TrendingTopic } from './types';
-import { extractHashtags, normalizeTopic } from './types';
+import { extractHashtags, normalizeTopic, filterGenericHashtags, isGenericHashtag } from './types';
 
 interface RedditPost {
   data: {
@@ -140,6 +140,8 @@ export class RedditAdapter implements PlatformAdapter {
       for (const word of words) {
         const normalized = normalizeTopic(word);
         if (normalized.length < 3) continue;
+        // Skip generic/useless topics
+        if (isGenericHashtag(word)) continue;
 
         const existing = topicMap.get(normalized) || {
           name: word,
@@ -151,8 +153,9 @@ export class RedditAdapter implements PlatformAdapter {
         topicMap.set(normalized, existing);
       }
 
-      // Also count hashtags
+      // Also count hashtags (already filtered in mapPosts, but double-check)
       for (const hashtag of post.hashtags) {
+        if (isGenericHashtag(hashtag)) continue;
         const normalized = normalizeTopic(hashtag);
         const existing = topicMap.get(normalized) || {
           name: hashtag,
@@ -346,25 +349,28 @@ export class RedditAdapter implements PlatformAdapter {
   ): SocialPost[] {
     return posts
       .filter((p) => !p.data.stickied) // Exclude pinned posts
-      .map((p) => ({
-        platform: 'reddit' as const,
-        externalId: p.data.id,
-        authorHandle: p.data.author,
-        authorName: null,
-        authorFollowers: null,
-        content: p.data.title,
-        postUrl: `https://reddit.com${p.data.permalink}`,
-        mediaUrls: this.extractMediaUrls(p),
-        likes: p.data.ups,
-        reposts: 0,
-        comments: p.data.num_comments,
-        views: 0,
-        hashtags: extractHashtags(p.data.title + ' ' + (p.data.selftext || '')),
-        topics: [p.data.subreddit],
-        region,
-        category,
-        postedAt: new Date(p.data.created_utc * 1000),
-      }));
+      .map((p) => {
+        const rawHashtags = extractHashtags(p.data.title + ' ' + (p.data.selftext || ''));
+        return {
+          platform: 'reddit' as const,
+          externalId: p.data.id,
+          authorHandle: p.data.author,
+          authorName: null,
+          authorFollowers: null,
+          content: p.data.title,
+          postUrl: `https://reddit.com${p.data.permalink}`,
+          mediaUrls: this.extractMediaUrls(p),
+          likes: p.data.ups,
+          reposts: 0,
+          comments: p.data.num_comments,
+          views: 0,
+          hashtags: filterGenericHashtags(rawHashtags),
+          topics: [p.data.subreddit],
+          region,
+          category,
+          postedAt: new Date(p.data.created_utc * 1000),
+        };
+      });
   }
 
   private extractMediaUrls(post: RedditPost): string[] {

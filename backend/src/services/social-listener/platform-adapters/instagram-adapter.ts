@@ -2,16 +2,7 @@
 // Note: Instagram heavily blocks scraping - this uses fallback strategies
 
 import type { PlatformAdapter, SocialPost, TrendingTopic } from './types';
-import { normalizeTopic, extractHashtags } from './types';
-
-// Known trending/popular hashtags on Instagram
-const TRENDING_HASHTAGS = [
-  '#instagood', '#photooftheday', '#fashion', '#beautiful', '#happy',
-  '#cute', '#tbt', '#like4like', '#followme', '#picoftheday',
-  '#follow', '#me', '#selfie', '#summer', '#art', '#instadaily',
-  '#friends', '#repost', '#nature', '#girl', '#fun', '#style',
-  '#smile', '#food', '#instalike', '#travel', '#singapore', '#asia',
-];
+import { normalizeTopic, extractHashtags, filterGenericHashtags } from './types';
 
 // Instagram-related news sources
 const INSTAGRAM_NEWS_SOURCES = [
@@ -25,6 +16,7 @@ export class InstagramAdapter implements PlatformAdapter {
 
   /**
    * Fetch Instagram content - multiple fallback methods
+   * Only returns actual content, no generic hashtag fillers
    */
   async getViralPosts(options?: {
     region?: string;
@@ -35,48 +27,36 @@ export class InstagramAdapter implements PlatformAdapter {
 
     const allPosts: SocialPost[] = [];
 
-    // Method 1: Try Instagram's public hashtag explore (usually blocked)
-    // Skipped - Instagram requires login for most content
-
-    // Method 2: Try fetching from Instagram blog RSS
+    // Method 1: Try fetching from Instagram blog RSS
     const blogPosts = await this.fetchInstagramBlog(limit);
     allPosts.push(...blogPosts);
 
-    // Method 3: Try public profile data (limited)
+    // Method 2: Try public profile data (limited)
     const profilePosts = await this.fetchPublicProfiles(region, limit);
     allPosts.push(...profilePosts);
 
-    // Method 4: Generate trending hashtag entries
-    if (allPosts.length < limit) {
-      const hashtagPosts = this.generateHashtagPosts(region, limit - allPosts.length);
-      allPosts.push(...hashtagPosts);
-    }
+    // No generic hashtag fallback - only show real content
+    // If we can't get real data, return empty rather than useless generic hashtags
 
     return allPosts.slice(0, limit);
   }
 
   /**
    * Get trending topics from Instagram
+   * Returns empty since we can't get real trending data without API
    */
-  async getTrending(region?: string): Promise<TrendingTopic[]> {
-    // Instagram doesn't expose trending publicly
-    // Return known popular hashtags
-    return TRENDING_HASHTAGS.slice(0, 25).map((hashtag, index) => ({
-      name: hashtag,
-      normalizedName: normalizeTopic(hashtag),
-      hashtag,
-      platform: 'instagram',
-      postCount: 1000000 - index * 50000, // Instagram hashtags have huge post counts
-      engagement: 10000000 - index * 500000,
-      url: `https://www.instagram.com/explore/tags/${hashtag.replace('#', '')}/`,
-      region: region || 'global',
-    }));
+  async getTrending(_region?: string): Promise<TrendingTopic[]> {
+    // Instagram doesn't expose trending publicly and we don't want to show
+    // generic hashtags that aren't actually "trending"
+    // Return empty - be honest about limitations
+    console.log('[instagram] No trending API access - returning empty');
+    return [];
   }
 
   /**
    * Search Instagram (returns link to explore)
    */
-  async searchPosts(query: string, limit = 10): Promise<SocialPost[]> {
+  async searchPosts(query: string, _limit = 10): Promise<SocialPost[]> {
     const cleanQuery = query.replace(/[^a-zA-Z0-9]/g, '');
 
     return [{
@@ -92,7 +72,7 @@ export class InstagramAdapter implements PlatformAdapter {
       reposts: 0,
       comments: 0,
       views: 0,
-      hashtags: [query.startsWith('#') ? query : `#${cleanQuery}`],
+      hashtags: filterGenericHashtags([query.startsWith('#') ? query : `#${cleanQuery}`]),
       topics: [query],
       region: 'global',
       category: 'Search',
@@ -132,6 +112,7 @@ export class InstagramAdapter implements PlatformAdapter {
           const pubDate = itemXml.match(/<pubDate>([\s\S]*?)<\/pubDate>/)?.[1];
 
           if (title && link) {
+            const rawHashtags = extractHashtags(title);
             posts.push({
               platform: 'instagram',
               externalId: `ig-blog-${link.split('/').pop() || ''}`,
@@ -145,7 +126,7 @@ export class InstagramAdapter implements PlatformAdapter {
               reposts: 0,
               comments: 0,
               views: 0,
-              hashtags: extractHashtags(title),
+              hashtags: filterGenericHashtags(rawHashtags),
               topics: ['Instagram News'],
               region: 'global',
               category: 'News',
@@ -220,6 +201,7 @@ export class InstagramAdapter implements PlatformAdapter {
         for (const edge of edges.slice(0, 3)) {
           const node = edge.node;
           const caption = node.edge_media_to_caption?.edges?.[0]?.node.text || '';
+          const rawHashtags = extractHashtags(caption);
 
           posts.push({
             platform: 'instagram',
@@ -234,7 +216,7 @@ export class InstagramAdapter implements PlatformAdapter {
             reposts: 0,
             comments: node.edge_media_to_comment?.count || 0,
             views: 0,
-            hashtags: extractHashtags(caption),
+            hashtags: filterGenericHashtags(rawHashtags),
             topics: [account.name],
             region: account.region,
             category: 'Social',
@@ -252,35 +234,6 @@ export class InstagramAdapter implements PlatformAdapter {
     }
 
     return posts;
-  }
-
-  private generateHashtagPosts(region: string | undefined, limit: number): SocialPost[] {
-    // Generate posts from known trending hashtags
-    const regionHashtags = region === 'singapore'
-      ? ['#singapore', '#sg', '#sgfood', '#visitsingapore', ...TRENDING_HASHTAGS]
-      : region === 'china'
-        ? ['#china', '#shanghai', '#beijing', ...TRENDING_HASHTAGS]
-        : TRENDING_HASHTAGS;
-
-    return regionHashtags.slice(0, limit).map((hashtag, index) => ({
-      platform: 'instagram' as const,
-      externalId: `instagram-hashtag-${hashtag.replace('#', '')}`,
-      authorHandle: 'Instagram',
-      authorName: 'Trending Hashtag',
-      authorFollowers: null,
-      content: `${hashtag} - Popular on Instagram`,
-      postUrl: `https://www.instagram.com/explore/tags/${hashtag.replace('#', '')}/`,
-      mediaUrls: [],
-      likes: 1000000 - index * 50000,
-      reposts: 0,
-      comments: 0,
-      views: 10000000 - index * 500000,
-      hashtags: [hashtag],
-      topics: ['Trending'],
-      region: region || 'global',
-      category: 'Trending',
-      postedAt: new Date(),
-    }));
   }
 
   private decodeHtml(text: string): string {

@@ -2,7 +2,7 @@
 
 import Parser from 'rss-parser';
 import type { PlatformAdapter, SocialPost, TrendingTopic } from './types';
-import { normalizeTopic } from './types';
+import { normalizeTopic, isGenericHashtag } from './types';
 
 interface GoogleTrendsConfig {
   geo: string;
@@ -114,26 +114,33 @@ export class GoogleTrendsAdapter implements PlatformAdapter {
       const url = `https://trends.google.com/trending/rss?geo=${config.geo}`;
       const feed = await parser.parseURL(url);
 
-      return (feed.items || []).slice(0, 20).map((item, index) => {
-        const title = (item.title || '').trim();
+      return (feed.items || [])
+        .slice(0, 20)
+        .filter((item) => {
+          const title = (item.title || '').trim();
+          // Filter out generic topics
+          return !isGenericHashtag(title);
+        })
+        .map((item, index) => {
+          const title = (item.title || '').trim();
 
-        // Google Trends sometimes includes traffic numbers in description
-        const trafficMatch = item.contentSnippet?.match(/([\d,]+)\+?\s*(searches)?/i);
-        const estimatedTraffic = trafficMatch
-          ? parseInt(trafficMatch[1].replace(/,/g, ''), 10)
-          : 1000 - index * 50; // Fallback: estimate based on position
+          // Google Trends sometimes includes traffic numbers in description
+          const trafficMatch = item.contentSnippet?.match(/([\d,]+)\+?\s*(searches)?/i);
+          const estimatedTraffic = trafficMatch
+            ? parseInt(trafficMatch[1].replace(/,/g, ''), 10)
+            : 1000 - index * 50; // Fallback: estimate based on position
 
-        return {
-          name: title,
-          normalizedName: normalizeTopic(title),
-          hashtag: null,
-          platform: 'google_trends',
-          postCount: 1, // Google Trends is one "post" per trend
-          engagement: estimatedTraffic,
-          url: item.link || null,
-          region: config.region,
-        };
-      });
+          return {
+            name: title,
+            normalizedName: normalizeTopic(title),
+            hashtag: null,
+            platform: 'google_trends',
+            postCount: 1, // Google Trends is one "post" per trend
+            engagement: estimatedTraffic,
+            url: item.link || null,
+            region: config.region,
+          };
+        });
     } catch (error) {
       console.error(`[google-trends] ${config.geo} error:`, error);
       return [];

@@ -3,7 +3,7 @@
 
 import Parser from 'rss-parser';
 import type { PlatformAdapter, SocialPost, TrendingTopic } from './types';
-import { normalizeTopic, extractHashtags } from './types';
+import { normalizeTopic, extractHashtags, isGenericHashtag, filterGenericHashtags } from './types';
 
 const parser = new Parser({
   timeout: 12_000,
@@ -20,14 +20,6 @@ const TIKTOK_NEWS_SOURCES = [
     name: 'TikTok Newsroom',
     region: 'global',
   },
-];
-
-// Known trending hashtags to monitor (updated periodically)
-const TRENDING_HASHTAGS = [
-  '#fyp', '#foryou', '#viral', '#trending', '#tiktok',
-  '#comedy', '#dance', '#music', '#food', '#travel',
-  '#fashion', '#beauty', '#fitness', '#tech', '#news',
-  '#singapore', '#asia', '#china',
 ];
 
 export class TikTokAdapter implements PlatformAdapter {
@@ -55,44 +47,42 @@ export class TikTokAdapter implements PlatformAdapter {
     const tokboardPosts = await this.fetchTokboard(region, limit);
     allPosts.push(...tokboardPosts);
 
-    // Method 3: Generate trending hashtag entries
-    if (allPosts.length < limit) {
-      const hashtagPosts = this.generateHashtagPosts(region, limit - allPosts.length);
-      allPosts.push(...hashtagPosts);
-    }
+    // Filter out posts that are just generic hashtags
+    const qualityPosts = allPosts.filter(post => {
+      // Keep posts with actual content (not just a hashtag)
+      const isJustHashtag = post.content.startsWith('#') && post.content.split(' ').length <= 2;
+      if (isJustHashtag && isGenericHashtag(post.content)) {
+        return false;
+      }
+      return true;
+    });
 
-    return allPosts.slice(0, limit);
+    return qualityPosts.slice(0, limit);
   }
 
   /**
-   * Get trending topics from TikTok
+   * Get trending topics from TikTok - only return meaningful trends
    */
   async getTrending(region?: string): Promise<TrendingTopic[]> {
-    // Try to fetch actual trending data
+    // Try to fetch actual trending data from Tokboard
     const tokboardTopics = await this.fetchTokboardTrending(region);
-    if (tokboardTopics.length > 0) {
-      return tokboardTopics;
+
+    // Filter out generic hashtags
+    const qualityTopics = tokboardTopics.filter(topic => !isGenericHashtag(topic.name));
+
+    if (qualityTopics.length > 0) {
+      return qualityTopics;
     }
 
-    // Fallback: return known trending hashtags
-    return TRENDING_HASHTAGS.slice(0, 20).map((hashtag, index) => ({
-      name: hashtag,
-      normalizedName: normalizeTopic(hashtag),
-      hashtag,
-      platform: 'tiktok',
-      postCount: 1000 - index * 50,
-      engagement: 10000 - index * 500,
-      url: `https://www.tiktok.com/tag/${hashtag.replace('#', '')}`,
-      region: region || 'global',
-    }));
+    // If no quality topics found, return empty - don't show generic fallbacks
+    console.log('[tiktok] No quality trending topics found');
+    return [];
   }
 
   /**
    * Search TikTok (limited - returns hashtag link)
    */
   async searchPosts(query: string, limit = 10): Promise<SocialPost[]> {
-    // Can't actually search TikTok without API
-    // Return a link to the search/hashtag page
     const cleanQuery = query.replace(/[^a-zA-Z0-9]/g, '');
 
     return [{
@@ -108,7 +98,7 @@ export class TikTokAdapter implements PlatformAdapter {
       reposts: 0,
       comments: 0,
       views: 0,
-      hashtags: [query.startsWith('#') ? query : `#${cleanQuery}`],
+      hashtags: filterGenericHashtags([query.startsWith('#') ? query : `#${cleanQuery}`]),
       topics: [query],
       region: 'global',
       category: 'Search',
@@ -128,6 +118,7 @@ export class TikTokAdapter implements PlatformAdapter {
         const feed = await parser.parseURL(source.url);
 
         for (const item of (feed.items || []).slice(0, limit)) {
+          const rawHashtags = extractHashtags(item.title || '');
           posts.push({
             platform: 'tiktok',
             externalId: `tiktok-news-${item.guid || item.link}`,
@@ -141,7 +132,7 @@ export class TikTokAdapter implements PlatformAdapter {
             reposts: 0,
             comments: 0,
             views: 0,
-            hashtags: extractHashtags(item.title || ''),
+            hashtags: filterGenericHashtags(rawHashtags),
             topics: ['TikTok News'],
             region: source.region,
             category: 'News',
@@ -158,7 +149,6 @@ export class TikTokAdapter implements PlatformAdapter {
 
   private async fetchTokboard(region: string | undefined, limit: number): Promise<SocialPost[]> {
     try {
-      // Tokboard provides trending TikTok data
       const url = 'https://tokboard.com/api/trending';
       const response = await fetch(url, {
         headers: {
@@ -175,7 +165,10 @@ export class TikTokAdapter implements PlatformAdapter {
 
       const data = await response.json() as { trends?: Array<{ name: string; url?: string; count?: number }> };
 
-      return (data.trends || []).slice(0, limit).map((trend, index) => ({
+      // Filter out generic trends
+      const qualityTrends = (data.trends || []).filter(trend => !isGenericHashtag(trend.name));
+
+      return qualityTrends.slice(0, limit).map((trend, index) => ({
         platform: 'tiktok' as const,
         externalId: `tokboard-${normalizeTopic(trend.name)}`,
         authorHandle: 'TikTok Trending',
@@ -215,7 +208,10 @@ export class TikTokAdapter implements PlatformAdapter {
 
       const data = await response.json() as { trends?: Array<{ name: string; url?: string; count?: number }> };
 
-      return (data.trends || []).slice(0, 30).map((trend, index) => ({
+      // Filter out generic trends
+      const qualityTrends = (data.trends || []).filter(trend => !isGenericHashtag(trend.name));
+
+      return qualityTrends.slice(0, 30).map((trend, index) => ({
         name: trend.name,
         normalizedName: normalizeTopic(trend.name),
         hashtag: trend.name.startsWith('#') ? trend.name : `#${trend.name}`,
@@ -228,28 +224,5 @@ export class TikTokAdapter implements PlatformAdapter {
     } catch {
       return [];
     }
-  }
-
-  private generateHashtagPosts(region: string | undefined, limit: number): SocialPost[] {
-    // Generate posts from known trending hashtags
-    return TRENDING_HASHTAGS.slice(0, limit).map((hashtag, index) => ({
-      platform: 'tiktok' as const,
-      externalId: `tiktok-hashtag-${hashtag.replace('#', '')}`,
-      authorHandle: 'TikTok',
-      authorName: 'Trending Hashtag',
-      authorFollowers: null,
-      content: `${hashtag} - Trending on TikTok`,
-      postUrl: `https://www.tiktok.com/tag/${hashtag.replace('#', '')}`,
-      mediaUrls: [],
-      likes: 10000 - index * 500,
-      reposts: 0,
-      comments: 0,
-      views: 100000 - index * 5000,
-      hashtags: [hashtag],
-      topics: ['Trending'],
-      region: region || 'global',
-      category: 'Trending',
-      postedAt: new Date(),
-    }));
   }
 }
