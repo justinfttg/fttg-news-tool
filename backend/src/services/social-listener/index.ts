@@ -3,6 +3,9 @@
 import { RedditAdapter } from './platform-adapters/reddit-adapter';
 import { GoogleTrendsAdapter } from './platform-adapters/google-trends-adapter';
 import { XAdapter } from './platform-adapters/x-adapter';
+import { YouTubeAdapter } from './platform-adapters/youtube-adapter';
+import { TikTokAdapter } from './platform-adapters/tiktok-adapter';
+import { InstagramAdapter } from './platform-adapters/instagram-adapter';
 import type {
   PlatformAdapter,
   SocialPost,
@@ -20,6 +23,9 @@ const adapters: Record<string, PlatformAdapter> = {
   reddit: new RedditAdapter(),
   google_trends: new GoogleTrendsAdapter(),
   x: new XAdapter(),
+  youtube: new YouTubeAdapter(),
+  tiktok: new TikTokAdapter(),
+  instagram: new InstagramAdapter(),
 };
 
 // ============================================================================

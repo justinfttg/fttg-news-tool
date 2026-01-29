@@ -13,6 +13,8 @@ const PLATFORM_STYLES: Record<string, { bg: string; text: string; label: string;
   x: { bg: 'bg-gray-100', text: 'text-gray-700', label: 'X', icon: '𝕏' },
   google_trends: { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Google', icon: '📈' },
   youtube: { bg: 'bg-red-100', text: 'text-red-700', label: 'YouTube', icon: '▶️' },
+  tiktok: { bg: 'bg-pink-100', text: 'text-pink-700', label: 'TikTok', icon: '🎵' },
+  instagram: { bg: 'bg-purple-100', text: 'text-purple-700', label: 'Instagram', icon: '📷' },
 };
 
 function formatNumber(num: number): string {

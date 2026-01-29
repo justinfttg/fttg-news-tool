@@ -7,7 +7,7 @@ import api from './api';
 // ============================================================================
 
 export interface SocialPost {
-  platform: 'x' | 'reddit' | 'google_trends' | 'youtube';
+  platform: 'x' | 'reddit' | 'google_trends' | 'youtube' | 'tiktok' | 'instagram';
   externalId: string;
   authorHandle: string | null;
   authorName: string | null;

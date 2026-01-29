@@ -9,8 +9,11 @@ import { WatchTrendModal } from './WatchTrendModal';
 
 const PLATFORMS = [
   { id: 'reddit', label: 'Reddit', color: 'bg-orange-500' },
-  { id: 'x', label: 'X/Twitter', color: 'bg-black' },
+  { id: 'x', label: 'X', color: 'bg-black' },
   { id: 'google_trends', label: 'Google', color: 'bg-blue-500' },
+  { id: 'youtube', label: 'YouTube', color: 'bg-red-600' },
+  { id: 'tiktok', label: 'TikTok', color: 'bg-pink-500' },
+  { id: 'instagram', label: 'Instagram', color: 'bg-gradient-to-r from-purple-500 to-pink-500' },
 ];
 
 const REGIONS = [
@@ -35,6 +38,9 @@ export function SocialListenerView({ projectId, region: initialRegion }: SocialL
     'reddit',
     'x',
     'google_trends',
+    'youtube',
+    'tiktok',
+    'instagram',
   ]);
   const [selectedRegion, setSelectedRegion] = useState<string>(initialRegion || 'all');
   const [showWatchModal, setShowWatchModal] = useState(false);

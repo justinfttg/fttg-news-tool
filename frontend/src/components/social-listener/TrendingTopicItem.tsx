@@ -14,6 +14,8 @@ const PLATFORM_COLORS: Record<string, string> = {
   x: 'bg-gray-800',
   google_trends: 'bg-blue-500',
   youtube: 'bg-red-500',
+  tiktok: 'bg-pink-500',
+  instagram: 'bg-purple-500',
 };
 
 function formatNumber(num: number): string {
