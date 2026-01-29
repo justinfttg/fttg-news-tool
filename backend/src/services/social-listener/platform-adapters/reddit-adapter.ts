@@ -68,8 +68,8 @@ const VIRAL_SUBREDDITS: SubredditConfig[] = [
 export class RedditAdapter implements PlatformAdapter {
   readonly platform = 'reddit';
 
-  // Reddit requires a more realistic user agent for public API
-  private readonly userAgent = 'Mozilla/5.0 (compatible; FTTG-News/1.0; +https://fttg.tv)';
+  // Use a browser-like user agent - Reddit blocks generic bot UAs
+  private readonly userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36';
   private readonly baseUrl = 'https://www.reddit.com';
 
   /**
@@ -220,32 +220,123 @@ export class RedditAdapter implements PlatformAdapter {
     config: SubredditConfig,
     limit: number
   ): Promise<SocialPost[]> {
+    // Try JSON API first, fall back to RSS if blocked
+    const jsonPosts = await this.fetchSubredditJSON(config, limit);
+    if (jsonPosts.length > 0) {
+      return jsonPosts;
+    }
+
+    // Fallback: try RSS feed
+    return this.fetchSubredditRSS(config, limit);
+  }
+
+  private async fetchSubredditJSON(
+    config: SubredditConfig,
+    limit: number
+  ): Promise<SocialPost[]> {
     try {
       const url = `${this.baseUrl}/r/${config.sub}/hot.json?limit=${limit}&raw_json=1`;
       const response = await fetch(url, {
         headers: {
           'User-Agent': this.userAgent,
           'Accept': 'application/json',
+          'Accept-Language': 'en-US,en;q=0.9',
         },
         // Add timeout to prevent hanging
-        signal: AbortSignal.timeout(10000),
+        signal: AbortSignal.timeout(8000),
       });
 
       if (!response.ok) {
-        console.error(`[reddit] r/${config.sub} failed: ${response.status} ${response.statusText}`);
+        console.warn(`[reddit] r/${config.sub} JSON failed: ${response.status}`);
         return [];
       }
 
       const data = (await response.json()) as { data?: { children?: RedditPost[] } };
       const posts = data.data?.children || [];
-      console.log(`[reddit] r/${config.sub} fetched ${posts.length} posts`);
+      console.log(`[reddit] r/${config.sub} JSON fetched ${posts.length} posts`);
 
       return this.mapPosts(posts, config.region, config.category);
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Unknown error';
-      console.error(`[reddit] r/${config.sub} error: ${msg}`);
+      console.warn(`[reddit] r/${config.sub} JSON error: ${msg}`);
       return [];
     }
+  }
+
+  private async fetchSubredditRSS(
+    config: SubredditConfig,
+    limit: number
+  ): Promise<SocialPost[]> {
+    try {
+      // Reddit RSS feed as fallback
+      const url = `${this.baseUrl}/r/${config.sub}/hot/.rss?limit=${limit}`;
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': this.userAgent,
+          'Accept': 'application/rss+xml, application/xml, text/xml, */*',
+        },
+        signal: AbortSignal.timeout(8000),
+      });
+
+      if (!response.ok) {
+        console.warn(`[reddit] r/${config.sub} RSS failed: ${response.status}`);
+        return [];
+      }
+
+      const text = await response.text();
+      // Basic RSS parsing - extract items
+      const posts: SocialPost[] = [];
+      const itemMatches = text.matchAll(/<entry>([\s\S]*?)<\/entry>/g);
+
+      for (const match of itemMatches) {
+        const itemXml = match[1];
+        const title = itemXml.match(/<title>([\s\S]*?)<\/title>/)?.[1]?.trim() || '';
+        const link = itemXml.match(/<link href="([^"]+)"/)?.[1] || '';
+        const author = itemXml.match(/<name>\/u\/([^<]+)<\/name>/)?.[1] || 'unknown';
+        const updated = itemXml.match(/<updated>([^<]+)<\/updated>/)?.[1];
+
+        if (title && link) {
+          posts.push({
+            platform: 'reddit',
+            externalId: `rss-${config.sub}-${link.split('/').pop() || ''}`,
+            authorHandle: author,
+            authorName: null,
+            authorFollowers: null,
+            content: this.decodeHtmlEntities(title),
+            postUrl: link,
+            mediaUrls: [],
+            likes: 0, // RSS doesn't have engagement data
+            reposts: 0,
+            comments: 0,
+            views: 0,
+            hashtags: extractHashtags(title),
+            topics: [config.sub],
+            region: config.region,
+            category: config.category,
+            postedAt: updated ? new Date(updated) : new Date(),
+          });
+        }
+
+        if (posts.length >= limit) break;
+      }
+
+      console.log(`[reddit] r/${config.sub} RSS fetched ${posts.length} posts`);
+      return posts;
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Unknown error';
+      console.error(`[reddit] r/${config.sub} RSS error: ${msg}`);
+      return [];
+    }
+  }
+
+  private decodeHtmlEntities(text: string): string {
+    return text
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&apos;/g, "'");
   }
 
   private mapPosts(
