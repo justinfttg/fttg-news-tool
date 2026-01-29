@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { useNewsFeed } from '../../hooks/useNews';
+import { useNewsFeed, useMarkedStories, useMarkedIds } from '../../hooks/useNews';
 import { StoryCard } from './StoryCard';
 import { SocialListenerView } from '../social-listener';
 import { NewsStory } from '../../types';
@@ -30,7 +30,7 @@ const CATEGORIES = [
   'Entertainment',
 ];
 
-type Tab = 'latest' | 'social';
+type Tab = 'latest' | 'marked' | 'social';
 
 interface NewsLibraryProps {
   projectId: string;
@@ -48,7 +48,14 @@ export function NewsLibrary({ projectId }: NewsLibraryProps) {
     category: category === 'All' ? undefined : category,
   });
 
-  // --- Infinite scroll observer ---
+  // --- Marked stories feed (infinite scroll) ---
+  const markedQuery = useMarkedStories(projectId);
+
+  // --- Marked IDs for showing which stories are marked ---
+  const markedIdsQuery = useMarkedIds();
+  const markedIdsSet = new Set(markedIdsQuery.data || []);
+
+  // --- Infinite scroll observer for latest feed ---
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useCallback(
     (node: HTMLDivElement | null) => {
@@ -72,16 +79,52 @@ export function NewsLibrary({ projectId }: NewsLibraryProps) {
     [feedQuery.hasNextPage, feedQuery.isFetchingNextPage, feedQuery.fetchNextPage]
   );
 
-  // Cleanup observer on unmount
+  // --- Infinite scroll observer for marked feed ---
+  const markedObserverRef = useRef<IntersectionObserver | null>(null);
+  const markedLoadMoreRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      if (markedObserverRef.current) markedObserverRef.current.disconnect();
+      if (!node) return;
+
+      markedObserverRef.current = new IntersectionObserver(
+        (entries) => {
+          if (
+            entries[0].isIntersecting &&
+            markedQuery.hasNextPage &&
+            !markedQuery.isFetchingNextPage
+          ) {
+            markedQuery.fetchNextPage();
+          }
+        },
+        { threshold: 0.1 }
+      );
+      markedObserverRef.current.observe(node);
+    },
+    [markedQuery.hasNextPage, markedQuery.isFetchingNextPage, markedQuery.fetchNextPage]
+  );
+
+  // Cleanup observers on unmount
   useEffect(() => {
     return () => {
       if (observerRef.current) observerRef.current.disconnect();
+      if (markedObserverRef.current) markedObserverRef.current.disconnect();
     };
   }, []);
 
   // --- Derived data (with deduplication by story ID) ---
   const latestStories: NewsStory[] = (() => {
     const allStories = feedQuery.data?.pages.flatMap((page) => page.stories) || [];
+    const seen = new Set<string>();
+    return allStories.filter((story) => {
+      if (seen.has(story.id)) return false;
+      seen.add(story.id);
+      return true;
+    });
+  })();
+
+  // --- Marked stories (with deduplication) ---
+  const markedStories: NewsStory[] = (() => {
+    const allStories = markedQuery.data?.pages.flatMap((page) => page.stories) || [];
     const seen = new Set<string>();
     return allStories.filter((story) => {
       if (seen.has(story.id)) return false;
@@ -126,6 +169,21 @@ export function NewsLibrary({ projectId }: NewsLibraryProps) {
           News Feed
         </button>
         <button
+          onClick={() => setActiveTab('marked')}
+          className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+            activeTab === 'marked'
+              ? 'bg-primary-600 text-white'
+              : 'text-gray-600 hover:bg-gray-100'
+          }`}
+        >
+          Marked
+          {markedQuery.data?.pages[0]?.pagination.total ? (
+            <span className="ml-1.5 px-1.5 py-0.5 text-xs rounded-full bg-amber-100 text-amber-700">
+              {markedQuery.data.pages[0].pagination.total}
+            </span>
+          ) : null}
+        </button>
+        <button
           onClick={() => setActiveTab('social')}
           className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
             activeTab === 'social'
@@ -140,6 +198,79 @@ export function NewsLibrary({ projectId }: NewsLibraryProps) {
       {/* Social Listener Tab */}
       {activeTab === 'social' && (
         <SocialListenerView projectId={projectId} region={region || undefined} />
+      )}
+
+      {/* Marked Stories Tab */}
+      {activeTab === 'marked' && (
+        <>
+          {/* Header with count */}
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-xs text-gray-400">
+              {markedQuery.data?.pages[0]?.pagination.total ?? 0} marked{' '}
+              {(markedQuery.data?.pages[0]?.pagination.total ?? 0) === 1 ? 'story' : 'stories'}
+            </span>
+          </div>
+
+          {/* Error state */}
+          {markedQuery.isError && (
+            <div className="text-center py-8 text-red-500 text-sm">
+              Failed to load marked stories. Please try again.
+            </div>
+          )}
+
+          {/* Loading state */}
+          {markedQuery.isLoading && (
+            <div className="text-center py-12 text-gray-400 text-sm">Loading marked stories...</div>
+          )}
+
+          {/* Empty state */}
+          {!markedQuery.isLoading && !markedQuery.isError && markedStories.length === 0 && (
+            <div className="text-center py-12">
+              <svg
+                className="w-12 h-12 mx-auto text-gray-300 mb-3"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
+                />
+              </svg>
+              <p className="text-gray-400 text-sm">No marked articles yet.</p>
+              <p className="text-gray-400 text-xs mt-1">
+                Click the bookmark icon on any article to save it here.
+              </p>
+            </div>
+          )}
+
+          {/* Story grid */}
+          {markedStories.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {markedStories.map((story) => (
+                <StoryCard
+                  key={story.id}
+                  story={story}
+                  projectId={projectId}
+                  isMarked={true}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Infinite scroll sentinel */}
+          {markedQuery.hasNextPage && (
+            <div ref={markedLoadMoreRef} className="py-6 text-center">
+              {markedQuery.isFetchingNextPage ? (
+                <span className="text-sm text-gray-400">Loading more...</span>
+              ) : (
+                <span className="text-sm text-gray-300">Scroll for more</span>
+              )}
+            </div>
+          )}
+        </>
       )}
 
       {/* Latest News Tab */}
@@ -239,7 +370,12 @@ export function NewsLibrary({ projectId }: NewsLibraryProps) {
           {displayStories.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {displayStories.map((story) => (
-                <StoryCard key={story.id} story={story} projectId={projectId} />
+                <StoryCard
+                  key={story.id}
+                  story={story}
+                  projectId={projectId}
+                  isMarked={markedIdsSet.has(story.id)}
+                />
               ))}
             </div>
           )}

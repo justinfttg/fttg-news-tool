@@ -20,6 +20,7 @@ import {
   deleteHandler as calendarDeleteHandler,
 } from '../api/calendar/items';
 import { feedHandler as newsFeedHandler, storyHandler as newsStoryHandler } from '../api/news/feed';
+import { markedHandler, markedIdsHandler } from '../api/news/marked';
 import newsFetcherHandler from '../cron/news-fetcher';
 import newsTrendingHandler from '../api/news/trending';
 import trendingUpdaterHandler from '../cron/trending-updater';
@@ -29,6 +30,7 @@ import {
   updateHandler as audienceUpdateHandler,
   deleteHandler as audienceDeleteHandler,
 } from '../api/audience/profiles';
+import { analyzeHandler as audienceAnalyzeHandler } from '../api/audience/analyze';
 
 dotenv.config();
 
@@ -61,12 +63,17 @@ app.post('/api/calendar/schedule', authMiddleware, calendarScheduleHandler);
 app.get('/api/news/feed', authMiddleware, newsFeedHandler);
 app.get('/api/news/story/:id', authMiddleware, newsStoryHandler);
 app.get('/api/news/trending', authMiddleware, newsTrendingHandler);
+app.get('/api/news/marked', authMiddleware, markedHandler);
+app.post('/api/news/marked', authMiddleware, markedHandler);
+app.delete('/api/news/marked', authMiddleware, markedHandler);
+app.get('/api/news/marked/ids', authMiddleware, markedIdsHandler);
 
 // Audience routes
 app.get('/api/audience/profiles', authMiddleware, audienceListHandler);
 app.post('/api/audience/profiles', authMiddleware, audienceCreateHandler);
 app.put('/api/audience/profiles/:id', authMiddleware, audienceUpdateHandler);
 app.delete('/api/audience/profiles/:id', authMiddleware, audienceDeleteHandler);
+app.post('/api/audience/analyze', authMiddleware, audienceAnalyzeHandler);
 
 // Cron routes (auth handled inside handler — supports CRON_SECRET or admin JWT)
 app.post('/api/cron/news-fetch', newsFetcherHandler);
