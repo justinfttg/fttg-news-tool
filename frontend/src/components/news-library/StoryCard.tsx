@@ -1,5 +1,4 @@
 import { NewsStory } from '../../types';
-import { AddToCalendarButton } from './AddToCalendarButton';
 import { useMarkStory, useUnmarkStory } from '../../hooks/useNews';
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -135,35 +134,31 @@ export function StoryCard({ story, projectId, isMarked = false }: StoryCardProps
             <span>{formatDate(story.published_at)}</span>
           </div>
 
-          <div className="flex items-center gap-1">
-            {/* Mark/Unmark button */}
-            <button
-              onClick={handleToggleMark}
-              disabled={isLoading}
-              className={`p-1.5 rounded-md transition-colors ${
-                isMarked
-                  ? 'text-amber-500 hover:bg-amber-50'
-                  : 'text-gray-400 hover:text-amber-500 hover:bg-gray-50'
-              } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-              title={isMarked ? 'Unmark article' : 'Mark article'}
+          {/* Mark/Unmark button */}
+          <button
+            onClick={handleToggleMark}
+            disabled={isLoading}
+            className={`p-1.5 rounded-md transition-colors ${
+              isMarked
+                ? 'text-amber-500 hover:bg-amber-50'
+                : 'text-gray-400 hover:text-amber-500 hover:bg-gray-50'
+            } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+            title={isMarked ? 'Unmark article' : 'Mark article'}
+          >
+            <svg
+              className="w-4 h-4"
+              fill={isMarked ? 'currentColor' : 'none'}
+              stroke="currentColor"
+              viewBox="0 0 24 24"
             >
-              <svg
-                className="w-4 h-4"
-                fill={isMarked ? 'currentColor' : 'none'}
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
-                />
-              </svg>
-            </button>
-
-            <AddToCalendarButton story={story} projectId={projectId} />
-          </div>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
+              />
+            </svg>
+          </button>
         </div>
       </div>
     </div>
