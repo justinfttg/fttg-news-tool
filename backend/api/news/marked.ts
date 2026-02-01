@@ -182,3 +182,9 @@ export async function markedIdsHandler(req: Request, res: Response) {
   }
   return getMarkedIdsHandler(req, res);
 }
+
+// ---------------------------------------------------------------------------
+// Default export for Vercel serverless function
+// ---------------------------------------------------------------------------
+
+export default markedHandler;
