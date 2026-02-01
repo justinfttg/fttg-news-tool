@@ -12,17 +12,19 @@ import {
  * Infinite-scroll paginated news feed with optional region/category filters.
  */
 export function useNewsFeed(filters: {
-  region?: string;
+  regions?: string[];  // Support multiple regions
   category?: string;
   limit?: number;
 }) {
   const limit = filters.limit || 20;
+  // Create stable key for regions array
+  const regionsKey = filters.regions?.sort().join(',') || '';
 
   return useInfiniteQuery({
-    queryKey: ['newsFeed', filters.region, filters.category, limit],
+    queryKey: ['newsFeed', regionsKey, filters.category, limit],
     queryFn: ({ pageParam = 1 }) =>
       getNewsFeed({
-        region: filters.region,
+        regions: filters.regions,
         category: filters.category,
         page: pageParam,
         limit,

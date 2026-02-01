@@ -17,12 +17,21 @@ export interface TrendingResponse {
 }
 
 export async function getNewsFeed(params: {
-  region?: string;
+  regions?: string[];  // Support multiple regions
   category?: string;
   page?: number;
   limit?: number;
 }): Promise<NewsFeedResponse> {
-  const { data } = await api.get<NewsFeedResponse>('/news/feed', { params });
+  // Convert regions array to comma-separated string for API
+  const apiParams: Record<string, any> = {
+    category: params.category,
+    page: params.page,
+    limit: params.limit,
+  };
+  if (params.regions && params.regions.length > 0) {
+    apiParams.regions = params.regions.join(',');
+  }
+  const { data } = await api.get<NewsFeedResponse>('/news/feed', { params: apiParams });
   return data;
 }
 

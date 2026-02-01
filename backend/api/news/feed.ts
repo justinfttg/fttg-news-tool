@@ -2,8 +2,19 @@ import { Request, Response } from 'express';
 import { z } from 'zod';
 import { getNewsFeed, getStoryById } from '../../src/db/queries/news.queries';
 
+const VALID_REGIONS = ['singapore', 'china', 'asia', 'southeast_asia', 'east_asia', 'apac', 'global'] as const;
+
 const FeedQuerySchema = z.object({
-  region: z.enum(['asia', 'southeast_asia', 'east_asia', 'apac', 'global']).optional(),
+  // Accept comma-separated regions or single region
+  regions: z.string().optional().transform((val) => {
+    if (!val) return undefined;
+    const regionList = val.split(',').map(r => r.trim()).filter(Boolean);
+    // Validate each region
+    const validRegions = regionList.filter(r => VALID_REGIONS.includes(r as any));
+    return validRegions.length > 0 ? validRegions : undefined;
+  }),
+  // Keep single region for backwards compatibility
+  region: z.enum(VALID_REGIONS).optional(),
   category: z.string().max(100).optional(),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
@@ -27,8 +38,11 @@ export async function feedHandler(req: Request, res: Response) {
   try {
     const query = FeedQuerySchema.parse(req.query);
 
+    // Use regions array if provided, otherwise fall back to single region
+    const regionsFilter = query.regions || (query.region ? [query.region] : undefined);
+
     const { stories, total } = await getNewsFeed({
-      region: query.region,
+      regions: regionsFilter,
       category: query.category,
       page: query.page,
       limit: query.limit,

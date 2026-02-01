@@ -24,7 +24,8 @@ export interface InsertNewsStory {
 }
 
 export interface NewsFeedQuery {
-  region?: string;
+  regions?: string[];  // Support multiple regions
+  region?: string;     // Keep for backwards compatibility
   category?: string;
   page: number;
   limit: number;
@@ -89,7 +90,7 @@ export async function upsertStories(stories: InsertNewsStory[]): Promise<{ inser
 // ---------------------------------------------------------------------------
 
 export async function getNewsFeed(query: NewsFeedQuery): Promise<{ stories: NewsStory[]; total: number }> {
-  const { region, category, page, limit } = query;
+  const { regions, region, category, page, limit } = query;
   const offset = (page - 1) * limit;
 
   // Build the query
@@ -97,8 +98,10 @@ export async function getNewsFeed(query: NewsFeedQuery): Promise<{ stories: News
     .from('news_stories')
     .select(STORY_COLUMNS, { count: 'exact' });
 
-  if (region) {
-    q = q.eq('region', region);
+  // Use regions array if provided, otherwise fall back to single region
+  const regionFilter = regions || (region ? [region] : undefined);
+  if (regionFilter && regionFilter.length > 0) {
+    q = q.in('region', regionFilter);
   }
   if (category) {
     q = q.eq('category', category);

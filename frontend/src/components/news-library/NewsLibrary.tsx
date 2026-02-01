@@ -6,7 +6,6 @@ import { SocialListenerView } from '../social-listener';
 import { NewsStory } from '../../types';
 
 const REGIONS = [
-  { value: '', label: 'All Regions' },
   { value: 'singapore', label: 'Singapore' },
   { value: 'china', label: 'China' },
   { value: 'global', label: 'Global' },
@@ -40,15 +39,42 @@ interface NewsLibraryProps {
 export function NewsLibrary({ projectId }: NewsLibraryProps) {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<Tab>('latest');
-  const [region, setRegion] = useState('');
+  const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
   const [category, setCategory] = useState('All');
   const [search, setSearch] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
+  const [showRegionDropdown, setShowRegionDropdown] = useState(false);
+
+  // Toggle region selection
+  const toggleRegion = (regionValue: string) => {
+    setSelectedRegions((prev) =>
+      prev.includes(regionValue)
+        ? prev.filter((r) => r !== regionValue)
+        : [...prev, regionValue]
+    );
+  };
+
+  // Clear all regions
+  const clearRegions = () => setSelectedRegions([]);
+
+  // Close dropdown when clicking outside
+  const regionDropdownRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (regionDropdownRef.current && !regionDropdownRef.current.contains(e.target as Node)) {
+        setShowRegionDropdown(false);
+      }
+    };
+    if (showRegionDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showRegionDropdown]);
 
   // --- Latest feed (infinite scroll) ---
   const feedQuery = useNewsFeed({
-    region: region || undefined,
+    regions: selectedRegions.length > 0 ? selectedRegions : undefined,
     category: category === 'All' ? undefined : category,
   });
 
@@ -334,18 +360,59 @@ export function NewsLibrary({ projectId }: NewsLibraryProps) {
               className="border border-gray-300 rounded-md px-3 py-1.5 text-sm w-56 focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
             />
 
-            {/* Region filter */}
-            <select
-              value={region}
-              onChange={(e) => setRegion(e.target.value)}
-              className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
-            >
-              {REGIONS.map((r) => (
-                <option key={r.value} value={r.value}>
-                  {r.label}
-                </option>
-              ))}
-            </select>
+            {/* Region filter - Multi-select dropdown */}
+            <div className="relative" ref={regionDropdownRef}>
+              <button
+                onClick={() => setShowRegionDropdown(!showRegionDropdown)}
+                className="flex items-center gap-2 border border-gray-300 rounded-md px-3 py-1.5 text-sm bg-white hover:bg-gray-50 focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+              >
+                <span>
+                  {selectedRegions.length === 0
+                    ? 'All Regions'
+                    : `${selectedRegions.length} region${selectedRegions.length > 1 ? 's' : ''}`}
+                </span>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {showRegionDropdown && (
+                <div className="absolute z-20 mt-1 w-56 bg-white border border-gray-200 rounded-md shadow-lg">
+                  <div className="p-2 border-b border-gray-100">
+                    <button
+                      onClick={clearRegions}
+                      className="text-xs text-primary-600 hover:text-primary-700"
+                    >
+                      Clear all
+                    </button>
+                  </div>
+                  <div className="max-h-60 overflow-y-auto p-2">
+                    {REGIONS.map((r) => (
+                      <label
+                        key={r.value}
+                        className="flex items-center gap-2 px-2 py-1.5 hover:bg-gray-50 rounded cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedRegions.includes(r.value)}
+                          onChange={() => toggleRegion(r.value)}
+                          className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                        />
+                        <span className="text-sm">{r.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                  <div className="p-2 border-t border-gray-100">
+                    <button
+                      onClick={() => setShowRegionDropdown(false)}
+                      className="w-full text-sm text-center py-1 bg-primary-600 text-white rounded hover:bg-primary-700"
+                    >
+                      Done
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Category filter */}
             <div className="flex flex-wrap gap-1">
