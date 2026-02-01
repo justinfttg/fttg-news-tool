@@ -15,8 +15,7 @@ const parser = new Parser({
 
 // Alternative X/Twitter trend sources
 const TREND_SOURCES = [
-  { url: 'https://getdaytrends.com/feed/', name: 'GetDayTrends' },
-  { url: 'https://twittertrends.co/rss/', name: 'TwitterTrends' },
+  { url: 'https://trends24.in/feed/', name: 'Trends24' },
 ];
 
 export class XAdapter implements PlatformAdapter {
@@ -79,8 +78,8 @@ export class XAdapter implements PlatformAdapter {
       }
     }
 
-    // Try scraping GetDayTrends HTML as fallback
-    const scrapedTopics = await this.scrapeGetDayTrends(region);
+    // Try scraping Trends24 HTML as fallback
+    const scrapedTopics = await this.scrapeTrends24(region);
     // Filter out generic hashtags
     const qualityScraped = scrapedTopics.filter(t => !isGenericHashtag(t.name));
     if (qualityScraped.length > 0) {
@@ -121,15 +120,15 @@ export class XAdapter implements PlatformAdapter {
     }
   }
 
-  private async scrapeGetDayTrends(region?: string): Promise<TrendingTopic[]> {
+  private async scrapeTrends24(region?: string): Promise<TrendingTopic[]> {
     try {
-      // GetDayTrends provides Twitter trending data
+      // Trends24.in provides Twitter/X trending data
       const regionPath = region === 'singapore' ? 'singapore'
         : region === 'china' ? 'china'
         : region === 'east_asia' ? 'japan'
-        : 'worldwide';
+        : '';
 
-      const url = `https://getdaytrends.com/${regionPath}/`;
+      const url = `https://trends24.in/${regionPath}`;
       const response = await fetch(url, {
         headers: {
           'User-Agent': this.getRandomUserAgent(),
@@ -139,50 +138,57 @@ export class XAdapter implements PlatformAdapter {
       });
 
       if (!response.ok) {
-        console.warn(`[x-adapter] GetDayTrends scrape failed: ${response.status}`);
+        console.warn(`[x-adapter] Trends24 scrape failed: ${response.status}`);
         return [];
       }
 
       const html = await response.text();
       const topics: TrendingTopic[] = [];
 
-      // Extract trending topics from HTML
-      // Pattern: <a class="trend-link" href="...">Topic Name</a>
-      const matches = html.matchAll(/<a[^>]*class="[^"]*trend-link[^"]*"[^>]*>([^<]+)<\/a>/gi);
-
-      let index = 0;
-      for (const match of matches) {
-        const name = match[1].trim();
-        if (name && name.length > 1 && index < 30) {
-          const isHashtag = name.startsWith('#');
-          topics.push({
-            name,
-            normalizedName: normalizeTopic(name),
-            hashtag: isHashtag ? name : null,
-            platform: 'x',
-            postCount: 1,
-            engagement: 1000 - index * 30,
-            url: `https://x.com/search?q=${encodeURIComponent(name)}`,
-            region: region || 'global',
-          });
-          index++;
+      // Extract from meta description which contains top trends
+      const metaMatch = html.match(/<meta\s+name=["']?description["']?\s+content=["']([^"']+)["']/i);
+      if (metaMatch) {
+        const desc = metaMatch[1];
+        // Parse trends from description like "Today's top X trends: trend1, trend2, trend3"
+        const trendsMatch = desc.match(/trends[^:]*:\s*([^.]+)/i);
+        if (trendsMatch) {
+          const trendNames = trendsMatch[1].split(',').map(t => t.trim()).filter(Boolean);
+          let index = 0;
+          for (const name of trendNames) {
+            if (name && name.length > 1 && index < 30 && !isGenericHashtag(name)) {
+              const isHashtag = name.startsWith('#');
+              topics.push({
+                name,
+                normalizedName: normalizeTopic(name),
+                hashtag: isHashtag ? name : null,
+                platform: 'x',
+                postCount: 100 - index * 5,
+                engagement: 10000 - index * 300,
+                url: `https://x.com/search?q=${encodeURIComponent(name)}`,
+                region: region || 'global',
+              });
+              index++;
+            }
+          }
         }
       }
 
-      // Alternative pattern for trend names
-      if (topics.length === 0) {
-        const altMatches = html.matchAll(/<span[^>]*class="[^"]*trend[^"]*"[^>]*>([^<]+)<\/span>/gi);
-        for (const match of altMatches) {
-          const name = match[1].trim();
-          if (name && name.length > 1 && index < 30) {
+      // Also try to extract from trend-card__list items
+      const listItemMatches = html.matchAll(/<li[^>]*>[\s\S]*?<a[^>]*>([^<]+)<\/a>[\s\S]*?<\/li>/gi);
+      let index = topics.length;
+      for (const match of listItemMatches) {
+        const name = match[1].trim();
+        if (name && name.length > 1 && index < 30 && !isGenericHashtag(name)) {
+          // Check if already added
+          if (!topics.some(t => t.normalizedName === normalizeTopic(name))) {
             const isHashtag = name.startsWith('#');
             topics.push({
               name,
               normalizedName: normalizeTopic(name),
               hashtag: isHashtag ? name : null,
               platform: 'x',
-              postCount: 1,
-              engagement: 1000 - index * 30,
+              postCount: 100 - index * 5,
+              engagement: 10000 - index * 300,
               url: `https://x.com/search?q=${encodeURIComponent(name)}`,
               region: region || 'global',
             });
@@ -191,10 +197,10 @@ export class XAdapter implements PlatformAdapter {
         }
       }
 
-      console.log(`[x-adapter] GetDayTrends scraped ${topics.length} topics`);
+      console.log(`[x-adapter] Trends24 scraped ${topics.length} topics`);
       return topics;
     } catch (error) {
-      console.warn(`[x-adapter] GetDayTrends scrape error:`, error);
+      console.warn(`[x-adapter] Trends24 scrape error:`, error);
       return [];
     }
   }
