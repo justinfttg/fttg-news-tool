@@ -69,8 +69,16 @@ export class RedditAdapter implements PlatformAdapter {
   readonly platform = 'reddit';
 
   // Use a browser-like user agent - Reddit blocks generic bot UAs
-  private readonly userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36';
+  private readonly userAgents = [
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:122.0) Gecko/20100101 Firefox/122.0',
+  ];
   private readonly baseUrl = 'https://www.reddit.com';
+
+  private getRandomUserAgent(): string {
+    return this.userAgents[Math.floor(Math.random() * this.userAgents.length)];
+  }
 
   /**
    * Fetch hot posts from configured subreddits
@@ -92,16 +100,28 @@ export class RedditAdapter implements PlatformAdapter {
     }
 
     const allPosts: SocialPost[] = [];
-    const postsPerSub = Math.ceil(limit / subs.length);
+    const postsPerSub = Math.ceil(limit / Math.min(subs.length, 5));
 
-    // Fetch from each subreddit in parallel
-    const results = await Promise.allSettled(
-      subs.map((sub) => this.fetchSubreddit(sub, postsPerSub))
-    );
+    // Limit to top 5 subreddits to avoid rate limiting, fetch in batches
+    const selectedSubs = subs.slice(0, 5);
 
-    for (const result of results) {
-      if (result.status === 'fulfilled') {
-        allPosts.push(...result.value);
+    // Fetch in smaller batches to avoid rate limiting
+    const batchSize = 2;
+    for (let i = 0; i < selectedSubs.length; i += batchSize) {
+      const batch = selectedSubs.slice(i, i + batchSize);
+      const results = await Promise.allSettled(
+        batch.map((sub) => this.fetchSubreddit(sub, postsPerSub))
+      );
+
+      for (const result of results) {
+        if (result.status === 'fulfilled') {
+          allPosts.push(...result.value);
+        }
+      }
+
+      // Small delay between batches
+      if (i + batchSize < selectedSubs.length) {
+        await new Promise(resolve => setTimeout(resolve, 200));
       }
     }
 
@@ -199,7 +219,7 @@ export class RedditAdapter implements PlatformAdapter {
     try {
       const url = `${this.baseUrl}/search.json?q=${encodeURIComponent(query)}&sort=hot&limit=${limit}`;
       const response = await fetch(url, {
-        headers: { 'User-Agent': this.userAgent },
+        headers: { 'User-Agent': this.getRandomUserAgent() },
       });
 
       if (!response.ok) {
@@ -235,35 +255,52 @@ export class RedditAdapter implements PlatformAdapter {
 
   private async fetchSubredditJSON(
     config: SubredditConfig,
-    limit: number
+    limit: number,
+    retries = 2
   ): Promise<SocialPost[]> {
-    try {
-      const url = `${this.baseUrl}/r/${config.sub}/hot.json?limit=${limit}&raw_json=1`;
-      const response = await fetch(url, {
-        headers: {
-          'User-Agent': this.userAgent,
-          'Accept': 'application/json',
-          'Accept-Language': 'en-US,en;q=0.9',
-        },
-        // Add timeout to prevent hanging
-        signal: AbortSignal.timeout(8000),
-      });
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        // Add small delay between retries and between requests to avoid rate limiting
+        if (attempt > 0) {
+          await new Promise(resolve => setTimeout(resolve, 500 * attempt));
+        }
 
-      if (!response.ok) {
-        console.warn(`[reddit] r/${config.sub} JSON failed: ${response.status}`);
-        return [];
+        const url = `${this.baseUrl}/r/${config.sub}/hot.json?limit=${limit}&raw_json=1`;
+        const response = await fetch(url, {
+          headers: {
+            'User-Agent': this.getRandomUserAgent(),
+            'Accept': 'application/json',
+            'Accept-Language': 'en-US,en;q=0.9',
+          },
+          // Increase timeout for Vercel serverless
+          signal: AbortSignal.timeout(15000),
+        });
+
+        if (response.status === 429) {
+          // Rate limited - wait and retry
+          console.warn(`[reddit] r/${config.sub} rate limited, attempt ${attempt + 1}`);
+          await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+          continue;
+        }
+
+        if (!response.ok) {
+          console.warn(`[reddit] r/${config.sub} JSON failed: ${response.status}`);
+          if (attempt < retries) continue;
+          return [];
+        }
+
+        const data = (await response.json()) as { data?: { children?: RedditPost[] } };
+        const posts = data.data?.children || [];
+        console.log(`[reddit] r/${config.sub} JSON fetched ${posts.length} posts`);
+
+        return this.mapPosts(posts, config.region, config.category);
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : 'Unknown error';
+        console.warn(`[reddit] r/${config.sub} JSON error (attempt ${attempt + 1}): ${msg}`);
+        if (attempt >= retries) return [];
       }
-
-      const data = (await response.json()) as { data?: { children?: RedditPost[] } };
-      const posts = data.data?.children || [];
-      console.log(`[reddit] r/${config.sub} JSON fetched ${posts.length} posts`);
-
-      return this.mapPosts(posts, config.region, config.category);
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : 'Unknown error';
-      console.warn(`[reddit] r/${config.sub} JSON error: ${msg}`);
-      return [];
     }
+    return [];
   }
 
   private async fetchSubredditRSS(
@@ -275,10 +312,10 @@ export class RedditAdapter implements PlatformAdapter {
       const url = `${this.baseUrl}/r/${config.sub}/hot/.rss?limit=${limit}`;
       const response = await fetch(url, {
         headers: {
-          'User-Agent': this.userAgent,
+          'User-Agent': this.getRandomUserAgent(),
           'Accept': 'application/rss+xml, application/xml, text/xml, */*',
         },
-        signal: AbortSignal.timeout(8000),
+        signal: AbortSignal.timeout(15000),
       });
 
       if (!response.ok) {

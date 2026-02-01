@@ -12,7 +12,14 @@ const INSTAGRAM_NEWS_SOURCES = [
 export class InstagramAdapter implements PlatformAdapter {
   readonly platform = 'instagram';
 
-  private readonly userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36';
+  private readonly userAgents = [
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  ];
+
+  private getRandomUserAgent(): string {
+    return this.userAgents[Math.floor(Math.random() * this.userAgents.length)];
+  }
 
   /**
    * Fetch Instagram content - multiple fallback methods
@@ -91,7 +98,7 @@ export class InstagramAdapter implements PlatformAdapter {
       try {
         const response = await fetch(url, {
           headers: {
-            'User-Agent': this.userAgent,
+            'User-Agent': this.getRandomUserAgent(),
             'Accept': 'application/rss+xml, application/xml, text/xml, */*',
           },
           signal: AbortSignal.timeout(8000),
@@ -164,7 +171,7 @@ export class InstagramAdapter implements PlatformAdapter {
         const url = `https://www.instagram.com/${account.username}/?__a=1&__d=dis`;
         const response = await fetch(url, {
           headers: {
-            'User-Agent': this.userAgent,
+            'User-Agent': this.getRandomUserAgent(),
             'Accept': 'application/json',
             'X-Requested-With': 'XMLHttpRequest',
           },

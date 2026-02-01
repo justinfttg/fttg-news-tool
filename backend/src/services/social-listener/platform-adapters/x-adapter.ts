@@ -22,7 +22,14 @@ const TREND_SOURCES = [
 export class XAdapter implements PlatformAdapter {
   readonly platform = 'x';
 
-  private readonly userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36';
+  private readonly userAgents = [
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  ];
+
+  private getRandomUserAgent(): string {
+    return this.userAgents[Math.floor(Math.random() * this.userAgents.length)];
+  }
 
   /**
    * Convert X trending topics to post-like format for unified display
@@ -125,10 +132,10 @@ export class XAdapter implements PlatformAdapter {
       const url = `https://getdaytrends.com/${regionPath}/`;
       const response = await fetch(url, {
         headers: {
-          'User-Agent': this.userAgent,
+          'User-Agent': this.getRandomUserAgent(),
           'Accept': 'text/html,application/xhtml+xml',
         },
-        signal: AbortSignal.timeout(8000),
+        signal: AbortSignal.timeout(15000),
       });
 
       if (!response.ok) {
