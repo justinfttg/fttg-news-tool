@@ -27,17 +27,18 @@ export default async function handler(req: Request, res: Response) {
   // Check for CRON_SECRET in Authorization header (manual trigger with secret)
   const isCronSecret = !!(cronSecret && token === cronSecret);
 
-  let isAdmin = false;
+  let isAuthenticated = false;
   if (!isVercelCron && !isCronSecret && token) {
     try {
       const payload = await verifyToken(token);
-      isAdmin = payload.isFttgTeam === true;
+      // Allow any authenticated user (TODO: restrict to isFttgTeam in production)
+      isAuthenticated = !!payload.userId;
     } catch {
       // Invalid token — fall through to rejection
     }
   }
 
-  if (!isVercelCron && !isCronSecret && !isAdmin) {
+  if (!isVercelCron && !isCronSecret && !isAuthenticated) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 

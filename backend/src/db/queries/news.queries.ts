@@ -38,20 +38,53 @@ export interface NewsFeedQuery {
 export async function upsertStories(stories: InsertNewsStory[]): Promise<{ inserted: number; skipped: number }> {
   if (stories.length === 0) return { inserted: 0, skipped: 0 };
 
-  // Filter out stories with URLs that already exist
-  const urls = stories.filter((s) => s.url).map((s) => s.url!);
+  // Separate stories with and without URLs
+  const storiesWithUrls = stories.filter((s) => s.url);
+  const storiesWithoutUrls = stories.filter((s) => !s.url);
 
+  // Check for existing URLs in batches (Supabase has query limits)
   let existingUrls = new Set<string>();
-  if (urls.length > 0) {
-    const { data: existing } = await supabase
-      .from('news_stories')
-      .select('url')
-      .in('url', urls);
+  const urls = storiesWithUrls.map((s) => s.url!);
 
-    existingUrls = new Set((existing || []).map((e: any) => e.url));
+  if (urls.length > 0) {
+    // Batch URL checks in groups of 100 to avoid query limits
+    for (let i = 0; i < urls.length; i += 100) {
+      const batch = urls.slice(i, i + 100);
+      const { data: existing } = await supabase
+        .from('news_stories')
+        .select('url')
+        .in('url', batch);
+
+      (existing || []).forEach((e: any) => existingUrls.add(e.url));
+    }
   }
 
-  const newStories = stories.filter((s) => !s.url || !existingUrls.has(s.url));
+  // Check for existing titles (for stories without URLs, to prevent duplicates)
+  let existingTitles = new Set<string>();
+  if (storiesWithoutUrls.length > 0) {
+    const titles = storiesWithoutUrls.map((s) => s.title);
+    for (let i = 0; i < titles.length; i += 100) {
+      const batch = titles.slice(i, i + 100);
+      const { data: existing } = await supabase
+        .from('news_stories')
+        .select('title')
+        .in('title', batch);
+
+      (existing || []).forEach((e: any) => existingTitles.add(e.title));
+    }
+  }
+
+  // Filter out duplicates:
+  // - Stories with URLs: skip if URL exists
+  // - Stories without URLs: skip if title exists
+  const newStories = stories.filter((s) => {
+    if (s.url) {
+      return !existingUrls.has(s.url);
+    } else {
+      return !existingTitles.has(s.title);
+    }
+  });
+
   const skipped = stories.length - newStories.length;
 
   if (newStories.length === 0) {
