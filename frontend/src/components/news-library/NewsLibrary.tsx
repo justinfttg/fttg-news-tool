@@ -43,6 +43,8 @@ export function NewsLibrary({ projectId }: NewsLibraryProps) {
   const [region, setRegion] = useState('');
   const [category, setCategory] = useState('All');
   const [search, setSearch] = useState('');
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
 
   // --- Latest feed (infinite scroll) ---
   const feedQuery = useNewsFeed({
@@ -137,9 +139,15 @@ export function NewsLibrary({ projectId }: NewsLibraryProps) {
 
   // --- Refresh handler ---
   const handleRefresh = async () => {
-    // Reset infinite query and refetch from page 1
-    await queryClient.resetQueries({ queryKey: ['newsFeed'] });
-    await feedQuery.refetch();
+    setIsRefreshing(true);
+    try {
+      // Reset infinite query and refetch from page 1
+      await queryClient.resetQueries({ queryKey: ['newsFeed'] });
+      await feedQuery.refetch();
+      setLastRefreshed(new Date());
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   // Client-side search filter
@@ -282,16 +290,23 @@ export function NewsLibrary({ projectId }: NewsLibraryProps) {
         <>
           {/* Header with count and refresh */}
           <div className="flex items-center justify-between mb-4">
-            <span className="text-xs text-gray-400">
-              {totalCount} {totalCount === 1 ? 'story' : 'stories'}
-            </span>
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-gray-400">
+                {totalCount} {totalCount === 1 ? 'story' : 'stories'}
+              </span>
+              {lastRefreshed && (
+                <span className="text-xs text-gray-400">
+                  Updated {lastRefreshed.toLocaleTimeString()}
+                </span>
+              )}
+            </div>
             <button
               onClick={handleRefresh}
-              disabled={feedQuery.isRefetching}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors disabled:opacity-50"
+              disabled={isRefreshing}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <svg
-                className={`w-3.5 h-3.5 ${feedQuery.isRefetching ? 'animate-spin' : ''}`}
+                className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -303,7 +318,7 @@ export function NewsLibrary({ projectId }: NewsLibraryProps) {
                   d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
                 />
               </svg>
-              {feedQuery.isRefetching ? 'Refreshing...' : 'Refresh'}
+              {isRefreshing ? 'Refreshing...' : 'Refresh'}
             </button>
           </div>
 
