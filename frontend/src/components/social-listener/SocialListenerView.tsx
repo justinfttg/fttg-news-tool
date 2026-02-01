@@ -1,6 +1,6 @@
 // Main Social Listener view component
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useViralPosts, useTrendingTopics, useWatchedTrends } from '../../hooks/useSocialListener';
 import { ViralPostItem } from './ViralPostItem';
 import { TrendingTopicItem } from './TrendingTopicItem';
@@ -17,22 +17,23 @@ const PLATFORMS = [
 ];
 
 const REGIONS = [
-  { id: 'all', label: 'All Regions' },
-  { id: 'global', label: 'Global' },
-  { id: 'singapore', label: 'Singapore' },
-  { id: 'china', label: 'China' },
-  { id: 'east_asia', label: 'East Asia' },
-  { id: 'apac', label: 'Asia Pacific' },
+  { value: 'singapore', label: 'Singapore' },
+  { value: 'china', label: 'China' },
+  { value: 'global', label: 'Global' },
+  { value: 'asia', label: 'Asia' },
+  { value: 'southeast_asia', label: 'Southeast Asia' },
+  { value: 'east_asia', label: 'East Asia' },
+  { value: 'apac', label: 'APAC' },
 ];
 
 type SubTab = 'viral' | 'trending' | 'watching';
 
 interface SocialListenerViewProps {
   projectId: string;
-  region?: string;
+  regions?: string[];
 }
 
-export function SocialListenerView({ projectId, region: initialRegion }: SocialListenerViewProps) {
+export function SocialListenerView({ projectId, regions: initialRegions }: SocialListenerViewProps) {
   const [subTab, setSubTab] = useState<SubTab>('viral');
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([
     'reddit',
@@ -42,12 +43,39 @@ export function SocialListenerView({ projectId, region: initialRegion }: SocialL
     'tiktok',
     'instagram',
   ]);
-  const [selectedRegion, setSelectedRegion] = useState<string>(initialRegion || 'all');
+  const [selectedRegions, setSelectedRegions] = useState<string[]>(initialRegions || []);
   const [showWatchModal, setShowWatchModal] = useState(false);
   const [prefilledQuery, setPrefilledQuery] = useState('');
+  const [showRegionDropdown, setShowRegionDropdown] = useState(false);
 
-  // Convert "all" to undefined for API
-  const regionParam = selectedRegion === 'all' ? undefined : selectedRegion;
+  // Toggle region selection
+  const toggleRegion = (regionValue: string) => {
+    setSelectedRegions((prev) =>
+      prev.includes(regionValue)
+        ? prev.filter((r) => r !== regionValue)
+        : [...prev, regionValue]
+    );
+  };
+
+  // Clear all regions
+  const clearRegions = () => setSelectedRegions([]);
+
+  // Close dropdown when clicking outside
+  const regionDropdownRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (regionDropdownRef.current && !regionDropdownRef.current.contains(e.target as Node)) {
+        setShowRegionDropdown(false);
+      }
+    };
+    if (showRegionDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showRegionDropdown]);
+
+  // Convert empty array to undefined for API
+  const regionParam = selectedRegions.length > 0 ? selectedRegions[0] : undefined;
 
   // Data fetching
   const viralQuery = useViralPosts({
@@ -180,20 +208,58 @@ export function SocialListenerView({ projectId, region: initialRegion }: SocialL
           ))}
         </div>
 
-        {/* Region filter */}
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-500">Region:</span>
-          <select
-            value={selectedRegion}
-            onChange={(e) => setSelectedRegion(e.target.value)}
-            className="text-xs px-2 py-1 border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500"
+        {/* Region filter - Multi-select dropdown */}
+        <div className="relative" ref={regionDropdownRef}>
+          <button
+            onClick={() => setShowRegionDropdown(!showRegionDropdown)}
+            className="flex items-center gap-2 border border-gray-200 rounded-md px-2 py-1 text-xs bg-white hover:bg-gray-50 focus:ring-1 focus:ring-primary-500"
           >
-            {REGIONS.map((region) => (
-              <option key={region.id} value={region.id}>
-                {region.label}
-              </option>
-            ))}
-          </select>
+            <span>
+              {selectedRegions.length === 0
+                ? 'All Regions'
+                : `${selectedRegions.length} region${selectedRegions.length > 1 ? 's' : ''}`}
+            </span>
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          {showRegionDropdown && (
+            <div className="absolute z-20 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg">
+              <div className="p-2 border-b border-gray-100">
+                <button
+                  onClick={clearRegions}
+                  className="text-xs text-primary-600 hover:text-primary-700"
+                >
+                  Clear all
+                </button>
+              </div>
+              <div className="max-h-60 overflow-y-auto p-2">
+                {REGIONS.map((r) => (
+                  <label
+                    key={r.value}
+                    className="flex items-center gap-2 px-2 py-1.5 hover:bg-gray-50 rounded cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedRegions.includes(r.value)}
+                      onChange={() => toggleRegion(r.value)}
+                      className="w-3.5 h-3.5 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                    />
+                    <span className="text-xs">{r.label}</span>
+                  </label>
+                ))}
+              </div>
+              <div className="p-2 border-t border-gray-100">
+                <button
+                  onClick={() => setShowRegionDropdown(false)}
+                  className="w-full text-xs text-center py-1 bg-primary-600 text-white rounded hover:bg-primary-700"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {subTab === 'watching' && (

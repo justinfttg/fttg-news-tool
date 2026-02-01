@@ -236,7 +236,7 @@ export function NewsLibrary({ projectId }: NewsLibraryProps) {
 
       {/* Social Listener Tab */}
       {activeTab === 'social' && (
-        <SocialListenerView projectId={projectId} region={selectedRegions[0] || undefined} />
+        <SocialListenerView projectId={projectId} regions={selectedRegions.length > 0 ? selectedRegions : undefined} />
       )}
 
       {/* Marked Stories Tab */}
