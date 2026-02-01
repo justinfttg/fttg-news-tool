@@ -15,6 +15,7 @@ import {
 
 const PreferredTone = z.enum(['investigative', 'educational', 'balanced', 'provocative', 'conversational']);
 const DepthPreference = z.enum(['surface', 'medium', 'deep_dive']);
+const PlatformType = z.enum(['digital_media', 'broadcast_tv', 'radio', 'print', 'social_media', 'podcast', 'other']);
 
 const ListQuerySchema = z.object({
   projectId: z.string().uuid(),
@@ -23,12 +24,27 @@ const ListQuerySchema = z.object({
 const CreateProfileSchema = z.object({
   projectId: z.string().uuid(),
   name: z.string().min(1).max(255),
+  // Demographics
   ageRange: z.string().max(50).optional(),
   location: z.string().max(100).optional(),
   educationLevel: z.string().max(100).optional(),
+  // Language & Market
+  primaryLanguage: z.string().max(100).optional(),
+  secondaryLanguages: z.array(z.string()).default([]),
+  marketRegion: z.string().max(100).optional(),
+  // Platform Info
+  platformUrl: z.string().url().optional().or(z.literal('')),
+  platformName: z.string().max(255).optional(),
+  platformType: PlatformType.nullable().optional(),
+  contentCategories: z.array(z.string()).default([]),
+  audienceSize: z.string().max(100).optional(),
+  // Psychographics
   values: z.array(z.string()).default([]),
   fears: z.array(z.string()).default([]),
   aspirations: z.array(z.string()).default([]),
+  keyDemographics: z.string().max(500).optional(),
+  culturalContext: z.string().max(1000).optional(),
+  // Content Preferences
   preferredTone: PreferredTone.nullable().optional(),
   depthPreference: DepthPreference.nullable().optional(),
   politicalSensitivity: z.number().int().min(1).max(10).nullable().optional(),
@@ -36,12 +52,27 @@ const CreateProfileSchema = z.object({
 
 const UpdateProfileSchema = z.object({
   name: z.string().min(1).max(255).optional(),
+  // Demographics
   ageRange: z.string().max(50).nullable().optional(),
   location: z.string().max(100).nullable().optional(),
   educationLevel: z.string().max(100).nullable().optional(),
+  // Language & Market
+  primaryLanguage: z.string().max(100).nullable().optional(),
+  secondaryLanguages: z.array(z.string()).optional(),
+  marketRegion: z.string().max(100).nullable().optional(),
+  // Platform Info
+  platformUrl: z.string().url().nullable().optional().or(z.literal('')),
+  platformName: z.string().max(255).nullable().optional(),
+  platformType: PlatformType.nullable().optional(),
+  contentCategories: z.array(z.string()).optional(),
+  audienceSize: z.string().max(100).nullable().optional(),
+  // Psychographics
   values: z.array(z.string()).optional(),
   fears: z.array(z.string()).optional(),
   aspirations: z.array(z.string()).optional(),
+  keyDemographics: z.string().max(500).nullable().optional(),
+  culturalContext: z.string().max(1000).nullable().optional(),
+  // Content Preferences
   preferredTone: PreferredTone.nullable().optional(),
   depthPreference: DepthPreference.nullable().optional(),
   politicalSensitivity: z.number().int().min(1).max(10).nullable().optional(),

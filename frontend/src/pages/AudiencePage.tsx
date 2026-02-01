@@ -31,6 +31,12 @@ export function AudiencePage() {
           News Library
         </Link>
         <Link
+          to={`/project/${id}/flagged`}
+          className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700"
+        >
+          Flagged Stories
+        </Link>
+        <Link
           to={`/project/${id}/audience`}
           className="px-4 py-2 text-sm font-medium text-primary-600 border-b-2 border-primary-600"
         >

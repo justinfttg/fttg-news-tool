@@ -2,7 +2,7 @@
 // CRUD operations for user's watched trends
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { verifyToken, type AuthPayload } from '../../src/services/auth/jwt';
+import { verifyToken, type TokenPayload } from '../../src/services/auth/jwt';
 import {
   createWatchedTrend,
   getWatchedTrends,
@@ -17,9 +17,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const token = authHeader.slice(7);
-  let auth: AuthPayload;
+  let auth: TokenPayload;
   try {
-    auth = verifyToken(token);
+    auth = await verifyToken(token);
   } catch {
     return res.status(401).json({ error: 'Invalid token' });
   }
@@ -41,14 +41,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 async function handleGet(
   req: VercelRequest,
   res: VercelResponse,
-  auth: AuthPayload,
+  auth: TokenPayload,
   projectId: string | null
 ) {
   if (!projectId) {
     return res.status(400).json({ error: 'projectId is required' });
   }
 
-  const trends = await getWatchedTrends(projectId, auth.sub);
+  const trends = await getWatchedTrends(projectId, auth.userId);
 
   return res.status(200).json({
     trends: trends.map((t) => ({
@@ -67,7 +67,7 @@ async function handleGet(
 async function handlePost(
   req: VercelRequest,
   res: VercelResponse,
-  auth: AuthPayload
+  auth: TokenPayload
 ) {
   const { query, queryType, projectId, platforms, regions } = req.body;
 
@@ -85,7 +85,7 @@ async function handlePost(
     : query;
 
   const trend = await createWatchedTrend({
-    userId: auth.sub,
+    userId: auth.userId,
     projectId,
     query: cleanQuery,
     queryType: type,
@@ -113,7 +113,7 @@ async function handlePost(
 async function handleDelete(
   req: VercelRequest,
   res: VercelResponse,
-  auth: AuthPayload
+  auth: TokenPayload
 ) {
   const trendId = req.query.id ? String(req.query.id) : null;
 
@@ -121,7 +121,7 @@ async function handleDelete(
     return res.status(400).json({ error: 'id is required' });
   }
 
-  const success = await deleteWatchedTrend(trendId, auth.sub);
+  const success = await deleteWatchedTrend(trendId, auth.userId);
 
   if (!success) {
     return res.status(404).json({ error: 'Trend not found or not authorized' });

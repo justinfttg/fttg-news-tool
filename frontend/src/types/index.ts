@@ -90,12 +90,27 @@ export interface AudienceProfile {
   id: string;
   project_id: string;
   name: string;
+  // Demographics
   age_range: string | null;
   location: string | null;
   education_level: string | null;
+  // Language & Market
+  primary_language: string | null;
+  secondary_languages: string[];
+  market_region: string | null;
+  // Platform Info
+  platform_url: string | null;
+  platform_name: string | null;
+  platform_type: 'digital_media' | 'broadcast_tv' | 'radio' | 'print' | 'social_media' | 'podcast' | 'other' | null;
+  content_categories: string[];
+  audience_size: string | null;
+  // Psychographics
   values: string[];
   fears: string[];
   aspirations: string[];
+  key_demographics: string | null;
+  cultural_context: string | null;
+  // Content Preferences
   preferred_tone: 'investigative' | 'educational' | 'balanced' | 'provocative' | 'conversational' | null;
   depth_preference: 'surface' | 'medium' | 'deep_dive' | null;
   political_sensitivity: number | null;

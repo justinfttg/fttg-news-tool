@@ -1,7 +1,13 @@
 import jwt, { SignOptions } from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-production';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
+// Use getter functions to ensure env vars are read after dotenv loads
+function getJwtSecret(): string {
+  return process.env.JWT_SECRET || 'dev-secret-change-in-production';
+}
+
+function getJwtExpiresIn(): string {
+  return process.env.JWT_EXPIRES_IN || '7d';
+}
 
 export interface TokenPayload {
   userId: string;
@@ -26,8 +32,8 @@ export function generateToken(
     orgId: extra?.orgId ?? null,
     isFttgTeam: extra?.isFttgTeam ?? false,
   };
-  const options: SignOptions = { expiresIn: JWT_EXPIRES_IN as any };
-  return jwt.sign(payload, JWT_SECRET, options);
+  const options: SignOptions = { expiresIn: getJwtExpiresIn() as any };
+  return jwt.sign(payload, getJwtSecret(), options);
 }
 
 /**
@@ -35,7 +41,7 @@ export function generateToken(
  */
 export async function verifyToken(token: string): Promise<TokenPayload> {
   return new Promise((resolve, reject) => {
-    jwt.verify(token, JWT_SECRET, (err, decoded) => {
+    jwt.verify(token, getJwtSecret(), (err, decoded) => {
       if (err) return reject(err);
       resolve(decoded as TokenPayload);
     });

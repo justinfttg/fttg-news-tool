@@ -1,6 +1,12 @@
+import dotenv from 'dotenv';
+import path from 'path';
+
+// Load .env from backend directory (where package.json is)
+// Use override:true to ensure .env values take precedence over any empty shell env vars
+dotenv.config({ path: path.resolve(__dirname, '..', '.env'), override: true });
+
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import { authMiddleware } from './middleware/auth.middleware';
 import { errorHandler } from './middleware/error-handler';
 
@@ -31,8 +37,13 @@ import {
   deleteHandler as audienceDeleteHandler,
 } from '../api/audience/profiles';
 import { analyzeHandler as audienceAnalyzeHandler } from '../api/audience/analyze';
-
-dotenv.config();
+import {
+  generateHandler as angleGenerateHandler,
+  listHandler as angleListHandler,
+  getHandler as angleGetHandler,
+  updateStatusHandler as angleUpdateStatusHandler,
+  deleteHandler as angleDeleteHandler,
+} from '../api/angles/generate';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -74,6 +85,13 @@ app.post('/api/audience/profiles', authMiddleware, audienceCreateHandler);
 app.put('/api/audience/profiles/:id', authMiddleware, audienceUpdateHandler);
 app.delete('/api/audience/profiles/:id', authMiddleware, audienceDeleteHandler);
 app.post('/api/audience/analyze', authMiddleware, audienceAnalyzeHandler);
+
+// Angle routes
+app.post('/api/angles/generate', authMiddleware, angleGenerateHandler);
+app.get('/api/angles', authMiddleware, angleListHandler);
+app.get('/api/angles/:id', authMiddleware, angleGetHandler);
+app.patch('/api/angles/:id/status', authMiddleware, angleUpdateStatusHandler);
+app.delete('/api/angles/:id', authMiddleware, angleDeleteHandler);
 
 // Cron routes (auth handled inside handler — supports CRON_SECRET or admin JWT)
 app.post('/api/cron/news-fetch', newsFetcherHandler);

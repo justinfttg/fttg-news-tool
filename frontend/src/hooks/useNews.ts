@@ -32,6 +32,8 @@ export function useNewsFeed(filters: {
       const { page, totalPages } = lastPage.pagination;
       return page < totalPages ? page + 1 : undefined;
     },
+    staleTime: 30_000, // Consider stale after 30 seconds
+    refetchOnWindowFocus: true, // Refetch when user returns to tab
   });
 }
 
