@@ -16,15 +16,19 @@ export default async function handler(req: Request, res: Response) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Auth: accept either CRON_SECRET or an admin JWT
+  // Auth: accept Vercel Cron, CRON_SECRET header, or admin JWT
   const cronSecret = process.env.CRON_SECRET;
   const authHeader = req.headers.authorization;
   const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
 
-  const isCron = !!(cronSecret && token === cronSecret);
+  // Check if this is a Vercel Cron job (they set this header)
+  const isVercelCron = req.headers['x-vercel-cron'] === '1';
+
+  // Check for CRON_SECRET in Authorization header (manual trigger with secret)
+  const isCronSecret = !!(cronSecret && token === cronSecret);
 
   let isAdmin = false;
-  if (!isCron && token) {
+  if (!isVercelCron && !isCronSecret && token) {
     try {
       const payload = await verifyToken(token);
       isAdmin = payload.isFttgTeam === true;
@@ -33,7 +37,7 @@ export default async function handler(req: Request, res: Response) {
     }
   }
 
-  if (!isCron && !isAdmin) {
+  if (!isVercelCron && !isCronSecret && !isAdmin) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
