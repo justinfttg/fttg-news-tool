@@ -56,15 +56,16 @@ export function useTrendingNews(limit?: number) {
  */
 export function useSearchNews(
   query: string,
-  filters: { region?: string; category?: string }
+  filters: { regions?: string[]; category?: string }
 ) {
   const limit = 20;
+  const regionsKey = filters.regions?.sort().join(',') || '';
 
   return useInfiniteQuery({
-    queryKey: ['newsSearch', query, filters.region, filters.category, limit],
+    queryKey: ['newsSearch', query, regionsKey, filters.category, limit],
     queryFn: ({ pageParam = 1 }) =>
       getNewsFeed({
-        region: filters.region,
+        regions: filters.regions,
         category: filters.category,
         page: pageParam,
         limit,
