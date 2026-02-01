@@ -141,8 +141,9 @@ export function NewsLibrary({ projectId }: NewsLibraryProps) {
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
-      // Reset infinite query and refetch from page 1
-      await queryClient.resetQueries({ queryKey: ['newsFeed'] });
+      // Remove query from cache completely to bypass staleTime
+      queryClient.removeQueries({ queryKey: ['newsFeed'] });
+      // Refetch will now make a fresh API call since cache is empty
       await feedQuery.refetch();
       setLastRefreshed(new Date());
     } finally {
