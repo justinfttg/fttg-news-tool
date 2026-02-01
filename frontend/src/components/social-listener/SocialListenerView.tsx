@@ -2,18 +2,18 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useViralPosts, useTrendingTopics, useWatchedTrends } from '../../hooks/useSocialListener';
-import { ViralPostItem } from './ViralPostItem';
 import { TrendingTopicItem } from './TrendingTopicItem';
 import { WatchedTrendCard } from './WatchedTrendCard';
 import { WatchTrendModal } from './WatchTrendModal';
+import { PlatformFeedWidget } from './PlatformFeedWidget';
 
 const PLATFORMS = [
-  { id: 'reddit', label: 'Reddit', color: 'bg-orange-500' },
-  { id: 'x', label: 'X', color: 'bg-black' },
-  { id: 'google_trends', label: 'Google', color: 'bg-blue-500' },
-  { id: 'youtube', label: 'YouTube', color: 'bg-red-600' },
-  { id: 'tiktok', label: 'TikTok', color: 'bg-pink-500' },
-  { id: 'instagram', label: 'Instagram', color: 'bg-gradient-to-r from-purple-500 to-pink-500' },
+  { id: 'reddit', label: 'Reddit', color: 'bg-orange-500', icon: '🔥', bgGradient: 'bg-gradient-to-r from-orange-500 to-orange-600' },
+  { id: 'x', label: 'X', color: 'bg-black', icon: '𝕏', bgGradient: 'bg-gradient-to-r from-gray-800 to-gray-900' },
+  { id: 'google_trends', label: 'Google Trends', color: 'bg-blue-500', icon: '📈', bgGradient: 'bg-gradient-to-r from-blue-500 to-blue-600' },
+  { id: 'youtube', label: 'YouTube', color: 'bg-red-600', icon: '▶️', bgGradient: 'bg-gradient-to-r from-red-500 to-red-600' },
+  { id: 'tiktok', label: 'TikTok', color: 'bg-pink-500', icon: '🎵', bgGradient: 'bg-gradient-to-r from-pink-500 to-pink-600' },
+  { id: 'instagram', label: 'Instagram', color: 'bg-gradient-to-r from-purple-500 to-pink-500', icon: '📷', bgGradient: 'bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400' },
 ];
 
 const REGIONS = [
@@ -282,8 +282,8 @@ export function SocialListenerView({ projectId, regions: initialRegions }: Socia
         </div>
       )}
 
-      {/* Loading state */}
-      {isLoading && (
+      {/* Loading state - only for trending and watching tabs */}
+      {isLoading && subTab !== 'viral' && (
         <div className="text-center py-12 text-gray-400 text-sm">
           <div className="flex items-center justify-center gap-2">
             <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -295,8 +295,8 @@ export function SocialListenerView({ projectId, regions: initialRegions }: Socia
         </div>
       )}
 
-      {/* Viral Posts Tab */}
-      {subTab === 'viral' && !isLoading && !isError && (
+      {/* Viral Posts Tab - Horizontal Scrollable Widgets */}
+      {subTab === 'viral' && !isError && (
         <div className="space-y-3">
           {/* Hashtag summary bar */}
           {viralQuery.data?.hashtags && viralQuery.data.hashtags.length > 0 && (
@@ -318,18 +318,41 @@ export function SocialListenerView({ projectId, regions: initialRegions }: Socia
             </div>
           )}
 
-          {/* Posts list */}
-          {viralQuery.data?.posts && viralQuery.data.posts.length > 0 ? (
-            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-              {viralQuery.data.posts.map((post) => (
-                <ViralPostItem
-                  key={`${post.platform}-${post.externalId}`}
-                  post={post}
-                  onWatch={handleWatch}
-                />
-              ))}
+          {/* Horizontal scrollable platform widgets */}
+          <div className="relative">
+            {/* Scroll hint gradients */}
+            <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-gray-50 to-transparent z-10 pointer-events-none" />
+            <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-gray-50 to-transparent z-10 pointer-events-none" />
+
+            {/* Scrollable container - shows 3.5 widgets */}
+            <div
+              className="flex gap-4 overflow-x-auto pb-4 px-2 scroll-smooth snap-x snap-mandatory"
+              style={{
+                scrollbarWidth: 'thin',
+                scrollbarColor: '#cbd5e1 transparent'
+              }}
+            >
+              {PLATFORMS.filter(p => selectedPlatforms.includes(p.id)).map((platform) => {
+                const platformPosts = viralQuery.data?.posts?.filter(
+                  post => post.platform === platform.id
+                ) || [];
+
+                return (
+                  <div key={platform.id} className="snap-start">
+                    <PlatformFeedWidget
+                      platform={platform}
+                      posts={platformPosts}
+                      isLoading={viralQuery.isLoading}
+                      onWatch={handleWatch}
+                    />
+                  </div>
+                );
+              })}
             </div>
-          ) : (
+          </div>
+
+          {/* No data state */}
+          {!viralQuery.isLoading && (!viralQuery.data?.posts || viralQuery.data.posts.length === 0) && (
             <div className="text-center py-12 text-gray-400 text-sm">
               <p>No viral posts found for selected platforms.</p>
               <p className="mt-1 text-xs">Try selecting different platforms or regions.</p>
