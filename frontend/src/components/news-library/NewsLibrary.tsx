@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useNewsFeed, useMarkedStories, useMarkedIds } from '../../hooks/useNews';
 import { StoryCard } from './StoryCard';
 import { SocialListenerView } from '../social-listener';
@@ -37,6 +38,7 @@ interface NewsLibraryProps {
 }
 
 export function NewsLibrary({ projectId }: NewsLibraryProps) {
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<Tab>('latest');
   const [region, setRegion] = useState('');
   const [category, setCategory] = useState('All');
@@ -134,8 +136,9 @@ export function NewsLibrary({ projectId }: NewsLibraryProps) {
   })();
 
   // --- Refresh handler ---
-  const handleRefresh = () => {
-    feedQuery.refetch();
+  const handleRefresh = async () => {
+    // Invalidate the cache to force a fresh fetch
+    await queryClient.invalidateQueries({ queryKey: ['newsFeed'] });
   };
 
   // Client-side search filter

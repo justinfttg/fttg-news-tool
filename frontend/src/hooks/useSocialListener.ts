@@ -16,8 +16,7 @@ export function useViralPosts(options?: {
   return useQuery({
     queryKey: ['viralPosts', options],
     queryFn: () => socialService.getViralPosts(options),
-    refetchInterval: 30_000, // Auto-refresh every 30 seconds
-    staleTime: 30_000, // Consider stale after 30 seconds
+    staleTime: 30_000, // Consider stale after 30 seconds - manual refresh will fetch fresh data
   });
 }
 
@@ -33,8 +32,7 @@ export function useTrendingTopics(options?: {
   return useQuery({
     queryKey: ['trendingTopics', options],
     queryFn: () => socialService.getTrendingTopics(options),
-    refetchInterval: 30_000, // Auto-refresh every 30 seconds
-    staleTime: 30_000, // Consider stale after 30 seconds
+    staleTime: 30_000, // Consider stale after 30 seconds - manual refresh will fetch fresh data
   });
 }
 
@@ -47,8 +45,7 @@ export function useWatchedTrends(projectId: string) {
     queryKey: ['watchedTrends', projectId],
     queryFn: () => socialService.getWatchedTrends(projectId),
     enabled: !!projectId,
-    refetchInterval: 60_000, // Auto-refresh every 60 seconds
-    staleTime: 30_000, // Consider stale after 30 seconds
+    staleTime: 30_000, // Consider stale after 30 seconds - manual refresh will fetch fresh data
   });
 }
 
