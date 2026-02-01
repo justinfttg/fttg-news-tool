@@ -77,11 +77,11 @@ export function SocialListenerView({ projectId, regions: initialRegions }: Socia
   // Convert empty array to undefined for API
   const regionParam = selectedRegions.length > 0 ? selectedRegions[0] : undefined;
 
-  // Data fetching
+  // Data fetching - request more posts so each platform widget has enough content
   const viralQuery = useViralPosts({
     platforms: selectedPlatforms,
     region: regionParam,
-    limit: 50,
+    limit: 100,
   });
 
   const trendingQuery = useTrendingTopics({

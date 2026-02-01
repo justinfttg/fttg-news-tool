@@ -51,8 +51,8 @@ export function PlatformFeedWidget({ platform, posts, isLoading, onWatch }: Plat
         </span>
       </div>
 
-      {/* Feed content */}
-      <div className="flex-1 overflow-y-auto max-h-[400px] divide-y divide-gray-100">
+      {/* Feed content - no max height, expands with content */}
+      <div className="divide-y divide-gray-100">
         {isLoading ? (
           <div className="flex items-center justify-center py-12 text-gray-400">
             <svg className="w-5 h-5 animate-spin mr-2" fill="none" viewBox="0 0 24 24">
