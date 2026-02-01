@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS social_posts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
   -- Source identification
-  platform VARCHAR(20) CHECK (platform IN ('x', 'reddit', 'google_trends', 'youtube')) NOT NULL,
+  platform VARCHAR(20) CHECK (platform IN ('x', 'reddit', 'google_trends', 'youtube', 'tiktok', 'instagram')) NOT NULL,
   external_id VARCHAR(255) NOT NULL,
 
   -- Content
