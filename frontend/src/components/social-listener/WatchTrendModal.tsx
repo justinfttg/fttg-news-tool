@@ -35,13 +35,20 @@ export function WatchTrendModal({
     'x',
     'google_trends',
   ]);
+  const [error, setError] = useState<string | null>(null);
 
   const watchMutation = useWatchTrend();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
 
     if (!query.trim()) return;
+
+    if (!projectId) {
+      setError('No project selected. Please select a project first.');
+      return;
+    }
 
     watchMutation.mutate(
       {
@@ -53,6 +60,10 @@ export function WatchTrendModal({
       {
         onSuccess: () => {
           onClose();
+        },
+        onError: (err: Error) => {
+          console.error('[WatchTrendModal] Error creating watched trend:', err);
+          setError(err.message || 'Failed to create watched trend. Please try again.');
         },
       }
     );
@@ -86,6 +97,13 @@ export function WatchTrendModal({
 
         <form onSubmit={handleSubmit}>
           <div className="p-4 space-y-4">
+            {/* Error display */}
+            {error && (
+              <div className="p-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded-md">
+                {error}
+              </div>
+            )}
+
             {/* Query input */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">

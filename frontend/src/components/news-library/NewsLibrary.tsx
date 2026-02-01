@@ -2,7 +2,6 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNewsFeed, useMarkedStories, useMarkedIds } from '../../hooks/useNews';
 import { StoryCard } from './StoryCard';
-import { SocialListenerView } from '../social-listener';
 import { NewsStory } from '../../types';
 
 const REGIONS = [
@@ -30,7 +29,7 @@ const CATEGORIES = [
   'Entertainment',
 ];
 
-type Tab = 'latest' | 'marked' | 'social';
+type Tab = 'latest' | 'marked';
 
 interface NewsLibraryProps {
   projectId: string;
@@ -222,22 +221,7 @@ export function NewsLibrary({ projectId }: NewsLibraryProps) {
             </span>
           ) : null}
         </button>
-        <button
-          onClick={() => setActiveTab('social')}
-          className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-            activeTab === 'social'
-              ? 'bg-primary-600 text-white'
-              : 'text-gray-600 hover:bg-gray-100'
-          }`}
-        >
-          Social Listener
-        </button>
       </div>
-
-      {/* Social Listener Tab */}
-      {activeTab === 'social' && (
-        <SocialListenerView projectId={projectId} regions={selectedRegions.length > 0 ? selectedRegions : undefined} />
-      )}
 
       {/* Marked Stories Tab */}
       {activeTab === 'marked' && (

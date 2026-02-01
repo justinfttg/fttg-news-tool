@@ -31,6 +31,12 @@ export function ProjectDetailPage() {
           News Library
         </Link>
         <Link
+          to={`/project/${id}/social`}
+          className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700"
+        >
+          Social Listener
+        </Link>
+        <Link
           to={`/project/${id}/flagged`}
           className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700"
         >

@@ -173,25 +173,32 @@ export async function createWatchedTrend(input: {
   platforms?: string[];
   regions?: string[];
 }): Promise<DBWatchedTrend | null> {
+  console.log('[watched-trends] Creating watched trend with input:', input);
+
+  const insertData = {
+    user_id: input.userId,
+    project_id: input.projectId,
+    query: input.query,
+    query_type: input.queryType,
+    platforms: input.platforms || ['reddit', 'google_trends', 'x'],
+    regions: input.regions || ['global'],
+    is_active: true,
+  };
+
+  console.log('[watched-trends] Insert data:', insertData);
+
   const { data, error } = await supabase
     .from('watched_trends')
-    .insert({
-      user_id: input.userId,
-      project_id: input.projectId,
-      query: input.query,
-      query_type: input.queryType,
-      platforms: input.platforms || ['reddit', 'google_trends', 'x'],
-      regions: input.regions || ['global'],
-      is_active: true,
-    })
+    .insert(insertData)
     .select()
     .single();
 
   if (error) {
-    console.error('[watched-trends] Create error:', error.message);
+    console.error('[watched-trends] Create error:', error.message, 'Code:', error.code, 'Details:', error.details, 'Hint:', error.hint);
     return null;
   }
 
+  console.log('[watched-trends] Successfully created:', data);
   return data as DBWatchedTrend;
 }
 

@@ -1,5 +1,17 @@
 import Anthropic from '@anthropic-ai/sdk';
 
+export interface WatchedTrendContext {
+  query: string;
+  queryType: 'hashtag' | 'keyword' | 'phrase';
+  platforms: string[];
+  relatedPosts?: Array<{
+    platform: string;
+    content: string;
+    engagement: number;
+    postUrl?: string;
+  }>;
+}
+
 export interface AngleGenerationParams {
   newsStory: {
     id: string;
@@ -26,6 +38,8 @@ export interface AngleGenerationParams {
   };
   frameworkType: 'fttg_investigative' | 'educational_deepdive';
   comparisonRegions?: string[];
+  // NEW: Watched trends context for social listening integration
+  watchedTrends?: WatchedTrendContext[];
 }
 
 export interface GeneratedAngle {
@@ -80,8 +94,39 @@ Your goal: Audiences leave understanding WHY this matters and WHAT should change
 Output Structure: Follow the 8-step Educational Deep-Dive framework precisely.
 Return your response as a valid JSON object.`;
 
+function buildSocialTrendsContext(watchedTrends?: WatchedTrendContext[]): string {
+  if (!watchedTrends || watchedTrends.length === 0) {
+    return '';
+  }
+
+  const trendsInfo = watchedTrends.map(trend => {
+    const postsInfo = trend.relatedPosts?.slice(0, 3).map(p =>
+      `  - [${p.platform}] "${p.content.slice(0, 100)}..." (${p.engagement} engagement)`
+    ).join('\n') || '  No related posts available';
+
+    return `• ${trend.queryType === 'hashtag' ? trend.query : `"${trend.query}"`} (${trend.queryType})
+  Platforms: ${trend.platforms.join(', ')}
+  Related posts:
+${postsInfo}`;
+  }).join('\n\n');
+
+  return `
+SOCIAL LISTENING CONTEXT:
+The following topics are being actively watched and trending on social media. Consider how this story connects to these trending conversations:
+
+${trendsInfo}
+
+Use this social context to:
+1. Reference specific social media conversations where relevant
+2. Connect the story to what people are already discussing online
+3. Identify potential viral angles or hook points
+4. Highlight how the story relates to ongoing public discourse
+`;
+}
+
 function buildFTTGInvestigativePrompt(params: AngleGenerationParams): string {
-  const { newsStory, audienceProfile, comparisonRegions } = params;
+  const { newsStory, audienceProfile, comparisonRegions, watchedTrends } = params;
+  const socialContext = buildSocialTrendsContext(watchedTrends);
 
   return `STORY TO ANALYZE:
 Title: ${newsStory.title}
@@ -102,7 +147,7 @@ Preferred Tone: ${audienceProfile.preferred_tone || 'balanced'}
 Political Sensitivity: ${audienceProfile.political_sensitivity || 5}/10
 
 COMPARISON SCOPE: ${comparisonRegions?.join(', ') || 'Global comparisons'}
-
+${socialContext}
 TASK: Generate ONE investigative angle using the 7-step FTTG framework.
 
 Your response MUST be a JSON object with this exact structure:
@@ -127,7 +172,8 @@ Return ONLY the JSON object, no other text.`;
 }
 
 function buildEducationalDeepDivePrompt(params: AngleGenerationParams): string {
-  const { newsStory, audienceProfile } = params;
+  const { newsStory, audienceProfile, watchedTrends } = params;
+  const socialContext = buildSocialTrendsContext(watchedTrends);
 
   return `TOPIC TO EXPLAIN:
 Title: ${newsStory.title}
@@ -142,7 +188,7 @@ Market: ${audienceProfile.market_region || 'Global'}
 Values: ${JSON.stringify(audienceProfile.values)}
 Cultural Context: ${audienceProfile.cultural_context || 'General audience'}
 Depth preference: ${audienceProfile.depth_preference || 'medium'}
-
+${socialContext}
 TASK: Create ONE educational deep-dive angle using the 8-step framework.
 
 Your response MUST be a JSON object with this exact structure:

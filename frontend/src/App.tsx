@@ -9,6 +9,7 @@ import { ProjectDetailPage } from './pages/ProjectDetailPage';
 import { NewsLibraryPage } from './pages/NewsLibraryPage';
 import { AudiencePage } from './pages/AudiencePage';
 import { FlaggedStoriesPage } from './pages/FlaggedStoriesPage';
+import { SocialListenerPage } from './pages/SocialListenerPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -32,6 +33,7 @@ export default function App() {
                 <Route path="/projects" element={<ProjectsPage />} />
                 <Route path="/project/:id/calendar" element={<ProjectDetailPage />} />
                 <Route path="/project/:id/library" element={<NewsLibraryPage />} />
+                <Route path="/project/:id/social" element={<SocialListenerPage />} />
                 <Route path="/project/:id/flagged" element={<FlaggedStoriesPage />} />
                 <Route path="/project/:id/audience" element={<AudiencePage />} />
                 <Route path="/settings" element={<div>Settings (Phase 7)</div>} />

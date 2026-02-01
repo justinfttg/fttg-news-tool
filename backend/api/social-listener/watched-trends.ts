@@ -69,45 +69,58 @@ async function handlePost(
   res: VercelResponse,
   auth: TokenPayload
 ) {
-  const { query, queryType, projectId, platforms, regions } = req.body;
+  try {
+    const { query, queryType, projectId, platforms, regions } = req.body;
 
-  if (!query || !projectId) {
-    return res.status(400).json({ error: 'query and projectId are required' });
+    console.log('[watched-trends] POST request:', { query, queryType, projectId, platforms, regions, userId: auth.userId });
+
+    if (!query || !projectId) {
+      return res.status(400).json({ error: 'query and projectId are required' });
+    }
+
+    // Validate query type
+    const validTypes = ['hashtag', 'keyword', 'phrase'];
+    const type = validTypes.includes(queryType) ? queryType : 'keyword';
+
+    // Clean up hashtag queries
+    const cleanQuery = type === 'hashtag' && !query.startsWith('#')
+      ? `#${query}`
+      : query;
+
+    const trend = await createWatchedTrend({
+      userId: auth.userId,
+      projectId,
+      query: cleanQuery,
+      queryType: type,
+      platforms,
+      regions,
+    });
+
+    if (!trend) {
+      console.error('[watched-trends] createWatchedTrend returned null');
+      return res.status(500).json({ error: 'Failed to create watched trend. The table may not exist or there was a database error.' });
+    }
+
+    console.log('[watched-trends] Created trend:', trend);
+
+    return res.status(201).json({
+      trend: {
+        id: trend.id,
+        query: trend.query,
+        queryType: trend.query_type,
+        platforms: trend.platforms,
+        regions: trend.regions,
+        isActive: trend.is_active,
+        createdAt: trend.created_at,
+      },
+    });
+  } catch (error) {
+    console.error('[watched-trends] Unexpected error in handlePost:', error);
+    return res.status(500).json({
+      error: 'Unexpected error creating watched trend',
+      details: error instanceof Error ? error.message : String(error)
+    });
   }
-
-  // Validate query type
-  const validTypes = ['hashtag', 'keyword', 'phrase'];
-  const type = validTypes.includes(queryType) ? queryType : 'keyword';
-
-  // Clean up hashtag queries
-  const cleanQuery = type === 'hashtag' && !query.startsWith('#')
-    ? `#${query}`
-    : query;
-
-  const trend = await createWatchedTrend({
-    userId: auth.userId,
-    projectId,
-    query: cleanQuery,
-    queryType: type,
-    platforms,
-    regions,
-  });
-
-  if (!trend) {
-    return res.status(500).json({ error: 'Failed to create watched trend' });
-  }
-
-  return res.status(201).json({
-    trend: {
-      id: trend.id,
-      query: trend.query,
-      queryType: trend.query_type,
-      platforms: trend.platforms,
-      regions: trend.regions,
-      isActive: trend.is_active,
-      createdAt: trend.created_at,
-    },
-  });
 }
 
 async function handleDelete(

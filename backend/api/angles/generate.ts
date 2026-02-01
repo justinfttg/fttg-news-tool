@@ -1,7 +1,8 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import { supabase } from '../../src/db/client';
-import { generateStoryAngle, AngleGenerationParams } from '../../src/services/ai/angle-generator';
+import { generateStoryAngle, AngleGenerationParams, WatchedTrendContext } from '../../src/services/ai/angle-generator';
+import { getWatchedTrends, getViralPostsFromDB } from '../../src/db/queries/social-listener.queries';
 
 const generateAngleSchema = z.object({
   newsStoryId: z.string().uuid(),
@@ -58,6 +59,44 @@ export async function generateHandler(req: Request, res: Response) {
       return res.status(403).json({ error: 'You do not have access to this project' });
     }
 
+    // Fetch watched trends for this project to include as context
+    let watchedTrendsContext: WatchedTrendContext[] = [];
+    try {
+      const watchedTrends = await getWatchedTrends(projectId, userId);
+
+      if (watchedTrends.length > 0) {
+        // Get related viral posts for each watched trend
+        const viralPosts = await getViralPostsFromDB({ limit: 50 });
+
+        watchedTrendsContext = watchedTrends.slice(0, 5).map(trend => {
+          // Find posts that match the watched trend query
+          const relatedPosts = viralPosts
+            .filter(post => {
+              const content = post.content.toLowerCase();
+              const query = trend.query.toLowerCase().replace(/^#/, '');
+              return content.includes(query) ||
+                     post.hashtags.some((h: string) => h.toLowerCase().includes(query));
+            })
+            .slice(0, 3)
+            .map(post => ({
+              platform: post.platform,
+              content: post.content,
+              engagement: post.engagement_score,
+              postUrl: post.post_url || undefined,
+            }));
+
+          return {
+            query: trend.query,
+            queryType: trend.query_type,
+            platforms: trend.platforms as string[],
+            relatedPosts,
+          };
+        });
+      }
+    } catch (err) {
+      console.log('[angles/generate] Could not fetch watched trends (continuing without):', err);
+    }
+
     // Generate the angle using AI
     const params: AngleGenerationParams = {
       newsStory: {
@@ -85,6 +124,7 @@ export async function generateHandler(req: Request, res: Response) {
       },
       frameworkType,
       comparisonRegions,
+      watchedTrends: watchedTrendsContext.length > 0 ? watchedTrendsContext : undefined,
     };
 
     const generatedAngle = await generateStoryAngle(params);

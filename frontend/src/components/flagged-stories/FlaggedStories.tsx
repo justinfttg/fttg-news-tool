@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { useMarkedStories } from '../../hooks/useNews';
 import { useAudienceProfiles } from '../../hooks/useAudience';
 import { useAngles } from '../../hooks/useAngles';
+import { useWatchedTrends } from '../../hooks/useSocialListener';
 import { FlaggedStoryCard } from './FlaggedStoryCard';
 import { AngleGenerationModal } from './AngleGenerationModal';
 import { AngleViewModal } from './AngleViewModal';
@@ -26,6 +27,10 @@ export function FlaggedStories({ projectId }: FlaggedStoriesProps) {
 
   // Fetch all angles for this project
   const { data: angles } = useAngles(projectId);
+
+  // Fetch watched trends for context
+  const { data: watchedTrendsData } = useWatchedTrends(projectId);
+  const watchedTrends = watchedTrendsData?.trends || [];
 
   // Infinite scroll observer
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -114,6 +119,39 @@ export function FlaggedStories({ projectId }: FlaggedStoriesProps) {
           </span>
         </div>
       </div>
+
+      {/* Watched trends context */}
+      {watchedTrends.length > 0 && (
+        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-start gap-3">
+            <svg className="w-5 h-5 text-blue-500 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+            <div className="flex-1">
+              <h3 className="text-sm font-medium text-blue-800">Social Listening Context Active</h3>
+              <p className="text-xs text-blue-700 mt-1">
+                The following trends from Social Listener will be considered when generating story angles:
+              </p>
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {watchedTrends.slice(0, 5).map((trend) => (
+                  <span
+                    key={trend.id}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs"
+                  >
+                    {trend.queryType === 'hashtag' && '#'}
+                    {trend.query.replace(/^#/, '')}
+                    <span className="text-blue-400">({trend.platforms.length} platforms)</span>
+                  </span>
+                ))}
+                {watchedTrends.length > 5 && (
+                  <span className="text-xs text-blue-500">+{watchedTrends.length - 5} more</span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* No audience profiles warning */}
       {(!audienceProfiles || audienceProfiles.length === 0) && (

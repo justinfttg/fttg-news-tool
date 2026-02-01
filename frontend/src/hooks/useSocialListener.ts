@@ -43,7 +43,12 @@ export function useTrendingTopics(options?: {
 export function useWatchedTrends(projectId: string) {
   return useQuery({
     queryKey: ['watchedTrends', projectId],
-    queryFn: () => socialService.getWatchedTrends(projectId),
+    queryFn: async () => {
+      console.log('[useWatchedTrends] Fetching watched trends for project:', projectId);
+      const result = await socialService.getWatchedTrends(projectId);
+      console.log('[useWatchedTrends] Got trends:', result);
+      return result;
+    },
     enabled: !!projectId,
     staleTime: 30_000, // Consider stale after 30 seconds - manual refresh will fetch fresh data
   });
@@ -54,10 +59,14 @@ export function useWatchTrend() {
 
   return useMutation({
     mutationFn: socialService.createWatchedTrend,
-    onSuccess: (_, variables) => {
+    onSuccess: (data, variables) => {
+      console.log('[useWatchTrend] Successfully created watched trend:', data);
       queryClient.invalidateQueries({
         queryKey: ['watchedTrends', variables.projectId],
       });
+    },
+    onError: (error: Error) => {
+      console.error('[useWatchTrend] Failed to create watched trend:', error);
     },
   });
 }

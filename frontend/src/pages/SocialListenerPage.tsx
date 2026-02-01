@@ -1,8 +1,8 @@
 import { useParams, Link } from 'react-router-dom';
-import { FlaggedStories } from '../components/flagged-stories/FlaggedStories';
+import { SocialListenerView } from '../components/social-listener';
 import { useProject } from '../hooks/useProjects';
 
-export function FlaggedStoriesPage() {
+export function SocialListenerPage() {
   const { id } = useParams<{ id: string }>();
   const { data: project, isLoading } = useProject(id);
 
@@ -13,7 +13,7 @@ export function FlaggedStoriesPage() {
           &larr; Projects
         </Link>
         <h1 className="text-2xl font-bold text-gray-900">
-          {isLoading ? 'Loading...' : project?.name || 'Flagged Stories'}
+          {isLoading ? 'Loading...' : project?.name || 'Social Listener'}
         </h1>
       </div>
 
@@ -32,13 +32,13 @@ export function FlaggedStoriesPage() {
         </Link>
         <Link
           to={`/project/${id}/social`}
-          className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700"
+          className="px-4 py-2 text-sm font-medium text-primary-600 border-b-2 border-primary-600"
         >
           Social Listener
         </Link>
         <Link
           to={`/project/${id}/flagged`}
-          className="px-4 py-2 text-sm font-medium text-primary-600 border-b-2 border-primary-600"
+          className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700"
         >
           Flagged Stories
         </Link>
@@ -51,7 +51,7 @@ export function FlaggedStoriesPage() {
       </div>
 
       {id ? (
-        <FlaggedStories projectId={id} />
+        <SocialListenerView projectId={id} />
       ) : (
         <div className="text-center py-12 text-gray-500">Project not found</div>
       )}
