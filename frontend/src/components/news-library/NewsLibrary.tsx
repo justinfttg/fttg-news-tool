@@ -180,9 +180,9 @@ export function NewsLibrary({ projectId }: NewsLibraryProps) {
     }
   };
 
-  // --- Fetch new stories from RSS (admin only) ---
+  // --- Fetch new stories from RSS ---
   const handleFetchNews = async () => {
-    if (!user?.is_fttg_team) return;
+    if (!user) return;
 
     setIsFetching(true);
     setFetchResult(null);
