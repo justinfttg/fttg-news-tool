@@ -35,7 +35,8 @@ export class TikTokAdapter implements PlatformAdapter {
   }
 
   /**
-   * Fetch TikTok content - combines multiple sources
+   * Fetch TikTok content - returns link to TikTok discover
+   * Note: TikTok heavily blocks scraping, so we provide direct links
    */
   async getViralPosts(options?: {
     region?: string;
@@ -44,27 +45,54 @@ export class TikTokAdapter implements PlatformAdapter {
   }): Promise<SocialPost[]> {
     const { region, limit = 20 } = options || {};
 
-    const allPosts: SocialPost[] = [];
+    // TikTok doesn't have accessible public APIs or RSS feeds
+    // Return a helpful link to their discover page
+    const posts: SocialPost[] = [{
+      platform: 'tiktok' as const,
+      externalId: 'tiktok-discover',
+      authorHandle: 'TikTok',
+      authorName: 'TikTok Discover',
+      authorFollowers: null,
+      content: 'Explore trending content on TikTok',
+      postUrl: 'https://www.tiktok.com/discover',
+      mediaUrls: [],
+      likes: 0,
+      reposts: 0,
+      comments: 0,
+      views: 0,
+      hashtags: [],
+      topics: ['Trending'],
+      region: region || 'global',
+      category: 'Trending',
+      postedAt: new Date(),
+    }];
 
-    // Method 1: Try TikTok Newsroom RSS
-    const newsroomPosts = await this.fetchNewsroomRSS(limit);
-    allPosts.push(...newsroomPosts);
+    // Also add trending hashtag suggestions
+    const trendingTags = ['#fyp', '#viral', '#trending', '#foryou'];
+    for (let i = 0; i < Math.min(trendingTags.length, limit - 1); i++) {
+      const tag = trendingTags[i];
+      posts.push({
+        platform: 'tiktok' as const,
+        externalId: `tiktok-tag-${tag.replace('#', '')}`,
+        authorHandle: 'TikTok Trending',
+        authorName: tag,
+        authorFollowers: null,
+        content: `Explore ${tag} on TikTok`,
+        postUrl: `https://www.tiktok.com/tag/${tag.replace('#', '')}`,
+        mediaUrls: [],
+        likes: 10000 - i * 1000,
+        reposts: 0,
+        comments: 0,
+        views: 100000 - i * 10000,
+        hashtags: [tag],
+        topics: ['Trending'],
+        region: region || 'global',
+        category: 'Trending',
+        postedAt: new Date(),
+      });
+    }
 
-    // Method 2: Try tokboard.com for trending (scrape-friendly)
-    const tokboardPosts = await this.fetchTokboard(region, limit);
-    allPosts.push(...tokboardPosts);
-
-    // Filter out posts that are just generic hashtags
-    const qualityPosts = allPosts.filter(post => {
-      // Keep posts with actual content (not just a hashtag)
-      const isJustHashtag = post.content.startsWith('#') && post.content.split(' ').length <= 2;
-      if (isJustHashtag && isGenericHashtag(post.content)) {
-        return false;
-      }
-      return true;
-    });
-
-    return qualityPosts.slice(0, limit);
+    return posts.slice(0, limit);
   }
 
   /**
