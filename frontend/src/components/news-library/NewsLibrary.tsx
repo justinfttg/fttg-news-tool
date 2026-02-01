@@ -137,8 +137,9 @@ export function NewsLibrary({ projectId }: NewsLibraryProps) {
 
   // --- Refresh handler ---
   const handleRefresh = async () => {
-    // Invalidate the cache to force a fresh fetch
-    await queryClient.invalidateQueries({ queryKey: ['newsFeed'] });
+    // Reset infinite query and refetch from page 1
+    await queryClient.resetQueries({ queryKey: ['newsFeed'] });
+    await feedQuery.refetch();
   };
 
   // Client-side search filter
