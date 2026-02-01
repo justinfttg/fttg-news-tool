@@ -14,7 +14,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Parse query parameters
     const platforms = req.query.platforms
       ? String(req.query.platforms).split(',')
-      : ['reddit', 'google_trends', 'x'];
+      : ['reddit', 'google_trends', 'x', 'youtube', 'tiktok', 'instagram'];
     const region = req.query.region ? String(req.query.region) : undefined;
     const limit = Math.min(parseInt(String(req.query.limit || '50'), 10), 100);
     const category = req.query.category ? String(req.query.category) : undefined;

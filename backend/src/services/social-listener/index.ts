@@ -43,7 +43,7 @@ export async function getViralPosts(
   options: ViralPostsOptions = {}
 ): Promise<SocialPost[]> {
   const {
-    platforms = ['reddit', 'google_trends', 'x'],
+    platforms = ['reddit', 'google_trends', 'x', 'youtube', 'tiktok', 'instagram'],
     region,
     limit = 50,
     category,
@@ -103,7 +103,7 @@ export async function getTrendingTopics(
   options: TrendingTopicsOptions = {}
 ): Promise<AggregatedTopic[]> {
   const {
-    platforms = ['reddit', 'google_trends', 'x'],
+    platforms = ['reddit', 'google_trends', 'x', 'youtube', 'tiktok', 'instagram'],
     region,
     limit = 30,
   } = options;
