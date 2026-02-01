@@ -341,8 +341,8 @@ export function NewsLibrary({ projectId }: NewsLibraryProps) {
               )}
             </div>
             <div className="flex items-center gap-2">
-              {/* Fetch Latest - Admin only */}
-              {user?.is_fttg_team && (
+              {/* Fetch Latest - Admin only (TODO: set is_fttg_team=true in DB for your user) */}
+              {user && (
                 <button
                   onClick={handleFetchNews}
                   disabled={isFetching}
