@@ -16,6 +16,35 @@ import { normalizeTopic, hashTopic } from './platform-adapters/types';
 export * from './platform-adapters/types';
 
 // ============================================================================
+// In-Memory Cache for faster responses
+// ============================================================================
+
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+}
+
+const CACHE_TTL_MS = 60 * 1000; // 1 minute cache
+const viralPostsCache = new Map<string, CacheEntry<SocialPost[]>>();
+const trendingTopicsCache = new Map<string, CacheEntry<TrendingTopic[]>>();
+
+function getCacheKey(platform: string, region?: string): string {
+  return `${platform}:${region || 'global'}`;
+}
+
+function isCacheValid<T>(entry: CacheEntry<T> | undefined): entry is CacheEntry<T> {
+  return !!entry && Date.now() - entry.timestamp < CACHE_TTL_MS;
+}
+
+// Timeout wrapper for platform fetches
+function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
+  ]);
+}
+
+// ============================================================================
 // Platform Registry
 // ============================================================================
 
@@ -50,13 +79,41 @@ export async function getViralPosts(
   } = options;
 
   const allPosts: SocialPost[] = [];
+  const PLATFORM_TIMEOUT_MS = 8000; // 8 second timeout per platform
 
-  // Fetch from each platform in parallel
+  // Fetch from each platform in parallel with caching and timeout
   const results = await Promise.allSettled(
     platforms.map(async (platform) => {
       const adapter = adapters[platform];
       if (!adapter) return [];
-      return adapter.getViralPosts({ region, limit: Math.ceil(limit / platforms.length), category });
+
+      // Check cache first
+      const cacheKey = getCacheKey(platform, region);
+      const cached = viralPostsCache.get(cacheKey);
+      if (isCacheValid(cached)) {
+        console.log(`[social-listener] Cache hit for ${platform}`);
+        return cached.data;
+      }
+
+      // Fetch with timeout
+      console.log(`[social-listener] Fetching ${platform}...`);
+      const startTime = Date.now();
+
+      const posts = await withTimeout(
+        adapter.getViralPosts({ region, limit: Math.ceil(limit / platforms.length), category }),
+        PLATFORM_TIMEOUT_MS,
+        [] // Return empty array on timeout
+      );
+
+      const elapsed = Date.now() - startTime;
+      console.log(`[social-listener] ${platform} returned ${posts.length} posts in ${elapsed}ms`);
+
+      // Cache the result
+      if (posts.length > 0) {
+        viralPostsCache.set(cacheKey, { data: posts, timestamp: Date.now() });
+      }
+
+      return posts;
     })
   );
 
@@ -109,13 +166,35 @@ export async function getTrendingTopics(
   } = options;
 
   const allTopics: TrendingTopic[] = [];
+  const PLATFORM_TIMEOUT_MS = 8000; // 8 second timeout per platform
 
-  // Fetch from each platform in parallel
+  // Fetch from each platform in parallel with caching and timeout
   const results = await Promise.allSettled(
     platforms.map(async (platform) => {
       const adapter = adapters[platform];
       if (!adapter) return [];
-      return adapter.getTrending(region);
+
+      // Check cache first
+      const cacheKey = `trending:${getCacheKey(platform, region)}`;
+      const cached = trendingTopicsCache.get(cacheKey);
+      if (isCacheValid(cached)) {
+        console.log(`[social-listener] Cache hit for trending ${platform}`);
+        return cached.data;
+      }
+
+      // Fetch with timeout
+      const topics = await withTimeout(
+        adapter.getTrending(region),
+        PLATFORM_TIMEOUT_MS,
+        [] // Return empty array on timeout
+      );
+
+      // Cache the result
+      if (topics.length > 0) {
+        trendingTopicsCache.set(cacheKey, { data: topics, timestamp: Date.now() });
+      }
+
+      return topics;
     })
   );
 
