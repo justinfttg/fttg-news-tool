@@ -22,6 +22,12 @@ const TIKTOK_NEWS_SOURCES = [
   },
 ];
 
+// Google News RSS for TikTok trending content
+const TIKTOK_NEWS_FEEDS = [
+  'https://news.google.com/rss/search?q=tiktok+trending+viral&hl=en-US&gl=US&ceid=US:en',
+  'https://news.google.com/rss/search?q=tiktok+trend+challenge&hl=en-US&gl=US&ceid=US:en',
+];
+
 export class TikTokAdapter implements PlatformAdapter {
   readonly platform = 'tiktok';
 
@@ -35,8 +41,7 @@ export class TikTokAdapter implements PlatformAdapter {
   }
 
   /**
-   * Fetch TikTok content - returns link to TikTok discover
-   * Note: TikTok heavily blocks scraping, so we provide direct links
+   * Fetch TikTok content from multiple sources
    */
   async getViralPosts(options?: {
     region?: string;
@@ -44,9 +49,34 @@ export class TikTokAdapter implements PlatformAdapter {
     category?: string;
   }): Promise<SocialPost[]> {
     const { region, limit = 20 } = options || {};
+    const allPosts: SocialPost[] = [];
 
-    // TikTok doesn't have accessible public APIs or RSS feeds
-    // Return a helpful link to their discover page
+    // Try Tokboard first for actual trending data
+    const tokboardPosts = await this.fetchTokboard(region, limit);
+    allPosts.push(...tokboardPosts);
+
+    // Try Google News for TikTok trending articles
+    const newsPosts = await this.fetchTikTokNews(region, limit);
+    allPosts.push(...newsPosts);
+
+    // Try TikTok Newsroom RSS
+    const newsroomPosts = await this.fetchNewsroomRSS(limit);
+    allPosts.push(...newsroomPosts);
+
+    // If we got some content, return it
+    if (allPosts.length > 0) {
+      // Sort by engagement and dedupe
+      const seen = new Set<string>();
+      const uniquePosts = allPosts.filter(post => {
+        if (seen.has(post.externalId)) return false;
+        seen.add(post.externalId);
+        return true;
+      });
+      uniquePosts.sort((a, b) => (b.likes + b.views) - (a.likes + a.views));
+      return uniquePosts.slice(0, limit);
+    }
+
+    // Fallback: return helpful links to explore TikTok
     const posts: SocialPost[] = [{
       platform: 'tiktok' as const,
       externalId: 'tiktok-discover',
@@ -67,32 +97,7 @@ export class TikTokAdapter implements PlatformAdapter {
       postedAt: new Date(),
     }];
 
-    // Also add trending hashtag suggestions
-    const trendingTags = ['#fyp', '#viral', '#trending', '#foryou'];
-    for (let i = 0; i < Math.min(trendingTags.length, limit - 1); i++) {
-      const tag = trendingTags[i];
-      posts.push({
-        platform: 'tiktok' as const,
-        externalId: `tiktok-tag-${tag.replace('#', '')}`,
-        authorHandle: 'TikTok Trending',
-        authorName: tag,
-        authorFollowers: null,
-        content: `Explore ${tag} on TikTok`,
-        postUrl: `https://www.tiktok.com/tag/${tag.replace('#', '')}`,
-        mediaUrls: [],
-        likes: 10000 - i * 1000,
-        reposts: 0,
-        comments: 0,
-        views: 100000 - i * 10000,
-        hashtags: [tag],
-        topics: ['Trending'],
-        region: region || 'global',
-        category: 'Trending',
-        postedAt: new Date(),
-      });
-    }
-
-    return posts.slice(0, limit);
+    return posts;
   }
 
   /**
@@ -144,6 +149,49 @@ export class TikTokAdapter implements PlatformAdapter {
   // -------------------------------------------------------------------------
   // Private helpers
   // -------------------------------------------------------------------------
+
+  private async fetchTikTokNews(region: string | undefined, limit: number): Promise<SocialPost[]> {
+    const posts: SocialPost[] = [];
+
+    for (const feedUrl of TIKTOK_NEWS_FEEDS) {
+      try {
+        const feed = await parser.parseURL(feedUrl);
+
+        for (const item of (feed.items || []).slice(0, Math.ceil(limit / 2))) {
+          const title = item.title || '';
+          // Skip if doesn't seem TikTok related
+          if (!title.toLowerCase().includes('tiktok')) continue;
+
+          const rawHashtags = extractHashtags(title);
+          posts.push({
+            platform: 'tiktok',
+            externalId: `tiktok-news-${Buffer.from(item.link || title).toString('base64').slice(0, 20)}`,
+            authorHandle: item.creator || 'TikTok News',
+            authorName: item.creator || 'TikTok Trending',
+            authorFollowers: null,
+            content: title,
+            postUrl: item.link || null,
+            mediaUrls: [],
+            likes: 500,
+            reposts: 0,
+            comments: 0,
+            views: 5000,
+            hashtags: filterGenericHashtags(rawHashtags),
+            topics: ['TikTok Trending'],
+            region: region || 'global',
+            category: 'Trending',
+            postedAt: item.pubDate ? new Date(item.pubDate) : new Date(),
+          });
+        }
+      } catch (error) {
+        console.warn(`[tiktok] Google News RSS error:`, error);
+      }
+
+      if (posts.length >= limit) break;
+    }
+
+    return posts.slice(0, limit);
+  }
 
   private async fetchNewsroomRSS(limit: number): Promise<SocialPost[]> {
     const posts: SocialPost[] = [];

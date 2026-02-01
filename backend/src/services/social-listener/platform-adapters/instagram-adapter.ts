@@ -1,12 +1,27 @@
 // Instagram adapter - attempts to fetch public data via multiple methods
 // Note: Instagram heavily blocks scraping - this uses fallback strategies
 
+import Parser from 'rss-parser';
 import type { PlatformAdapter, SocialPost, TrendingTopic } from './types';
 import { normalizeTopic, extractHashtags, filterGenericHashtags } from './types';
+
+const parser = new Parser({
+  timeout: 12_000,
+  headers: {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+    Accept: 'application/rss+xml, application/xml, text/xml, */*',
+  },
+});
 
 // Instagram-related news sources
 const INSTAGRAM_NEWS_SOURCES = [
   'https://about.instagram.com/blog/rss',
+];
+
+// Google News RSS for Instagram trending content
+const INSTAGRAM_NEWS_FEEDS = [
+  'https://news.google.com/rss/search?q=instagram+trending+viral&hl=en-US&gl=US&ceid=US:en',
+  'https://news.google.com/rss/search?q=instagram+reels+trend&hl=en-US&gl=US&ceid=US:en',
 ];
 
 export class InstagramAdapter implements PlatformAdapter {
@@ -22,8 +37,7 @@ export class InstagramAdapter implements PlatformAdapter {
   }
 
   /**
-   * Fetch Instagram content - returns links to Instagram explore
-   * Note: Instagram heavily blocks scraping, so we provide direct links
+   * Fetch Instagram content from multiple sources
    */
   async getViralPosts(options?: {
     region?: string;
@@ -31,9 +45,34 @@ export class InstagramAdapter implements PlatformAdapter {
     category?: string;
   }): Promise<SocialPost[]> {
     const { region, limit = 20 } = options || {};
+    const allPosts: SocialPost[] = [];
 
-    // Instagram doesn't have accessible public APIs
-    // Return helpful links to their explore features
+    // Try Google News for Instagram trending articles
+    const newsPosts = await this.fetchInstagramNews(region, limit);
+    allPosts.push(...newsPosts);
+
+    // Try Instagram Blog RSS
+    const blogPosts = await this.fetchInstagramBlog(limit);
+    allPosts.push(...blogPosts);
+
+    // Try public profile scraping (usually fails but worth trying)
+    const profilePosts = await this.fetchPublicProfiles(region, Math.ceil(limit / 3));
+    allPosts.push(...profilePosts);
+
+    // If we got some content, return it
+    if (allPosts.length > 0) {
+      // Sort by engagement and dedupe
+      const seen = new Set<string>();
+      const uniquePosts = allPosts.filter(post => {
+        if (seen.has(post.externalId)) return false;
+        seen.add(post.externalId);
+        return true;
+      });
+      uniquePosts.sort((a, b) => (b.likes + b.views + b.comments) - (a.likes + a.views + a.comments));
+      return uniquePosts.slice(0, limit);
+    }
+
+    // Fallback: return helpful links to explore Instagram
     const posts: SocialPost[] = [{
       platform: 'instagram' as const,
       externalId: 'instagram-explore',
@@ -54,32 +93,7 @@ export class InstagramAdapter implements PlatformAdapter {
       postedAt: new Date(),
     }];
 
-    // Add trending hashtag suggestions
-    const trendingTags = ['#reels', '#viral', '#trending', '#explore'];
-    for (let i = 0; i < Math.min(trendingTags.length, limit - 1); i++) {
-      const tag = trendingTags[i];
-      posts.push({
-        platform: 'instagram' as const,
-        externalId: `instagram-tag-${tag.replace('#', '')}`,
-        authorHandle: 'Instagram Trending',
-        authorName: tag,
-        authorFollowers: null,
-        content: `Explore ${tag} on Instagram`,
-        postUrl: `https://www.instagram.com/explore/tags/${tag.replace('#', '')}/`,
-        mediaUrls: [],
-        likes: 10000 - i * 1000,
-        reposts: 0,
-        comments: 0,
-        views: 100000 - i * 10000,
-        hashtags: [tag],
-        topics: ['Trending'],
-        region: region || 'global',
-        category: 'Trending',
-        postedAt: new Date(),
-      });
-    }
-
-    return posts.slice(0, limit);
+    return posts;
   }
 
   /**
@@ -124,6 +138,49 @@ export class InstagramAdapter implements PlatformAdapter {
   // -------------------------------------------------------------------------
   // Private helpers
   // -------------------------------------------------------------------------
+
+  private async fetchInstagramNews(region: string | undefined, limit: number): Promise<SocialPost[]> {
+    const posts: SocialPost[] = [];
+
+    for (const feedUrl of INSTAGRAM_NEWS_FEEDS) {
+      try {
+        const feed = await parser.parseURL(feedUrl);
+
+        for (const item of (feed.items || []).slice(0, Math.ceil(limit / 2))) {
+          const title = item.title || '';
+          // Skip if doesn't seem Instagram related
+          if (!title.toLowerCase().includes('instagram')) continue;
+
+          const rawHashtags = extractHashtags(title);
+          posts.push({
+            platform: 'instagram',
+            externalId: `ig-news-${Buffer.from(item.link || title).toString('base64').slice(0, 20)}`,
+            authorHandle: item.creator || 'Instagram News',
+            authorName: item.creator || 'Instagram Trending',
+            authorFollowers: null,
+            content: title,
+            postUrl: item.link || null,
+            mediaUrls: [],
+            likes: 500,
+            reposts: 0,
+            comments: 0,
+            views: 5000,
+            hashtags: filterGenericHashtags(rawHashtags),
+            topics: ['Instagram Trending'],
+            region: region || 'global',
+            category: 'Trending',
+            postedAt: item.pubDate ? new Date(item.pubDate) : new Date(),
+          });
+        }
+      } catch (error) {
+        console.warn(`[instagram] Google News RSS error:`, error);
+      }
+
+      if (posts.length >= limit) break;
+    }
+
+    return posts.slice(0, limit);
+  }
 
   private async fetchInstagramBlog(limit: number): Promise<SocialPost[]> {
     const posts: SocialPost[] = [];

@@ -2,10 +2,10 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useViralPosts, useTrendingTopics, useWatchedTrends } from '../../hooks/useSocialListener';
-import { TrendingTopicItem } from './TrendingTopicItem';
 import { WatchedTrendCard } from './WatchedTrendCard';
 import { WatchTrendModal } from './WatchTrendModal';
 import { PlatformFeedWidget } from './PlatformFeedWidget';
+import { TrendingTopicWidget } from './TrendingTopicWidget';
 
 const PLATFORMS = [
   { id: 'reddit', label: 'Reddit', color: 'bg-orange-500', icon: '🔥', bgGradient: 'bg-gradient-to-r from-orange-500 to-orange-600' },
@@ -282,8 +282,8 @@ export function SocialListenerView({ projectId, regions: initialRegions }: Socia
         </div>
       )}
 
-      {/* Loading state - only for trending and watching tabs */}
-      {isLoading && subTab !== 'viral' && (
+      {/* Loading state - only for watching tab now */}
+      {isLoading && subTab === 'watching' && (
         <div className="text-center py-12 text-gray-400 text-sm">
           <div className="flex items-center justify-center gap-2">
             <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -361,21 +361,45 @@ export function SocialListenerView({ projectId, regions: initialRegions }: Socia
         </div>
       )}
 
-      {/* Trending Topics Tab */}
-      {subTab === 'trending' && !isLoading && !isError && (
-        <div>
-          {trendingQuery.data?.topics && trendingQuery.data.topics.length > 0 ? (
-            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-              {trendingQuery.data.topics.map((topic, index) => (
-                <TrendingTopicItem
-                  key={topic.name}
-                  topic={topic}
-                  rank={index + 1}
-                  onWatch={() => handleWatch(topic.hashtag || topic.name)}
-                />
-              ))}
+      {/* Trending Topics Tab - Horizontal Scrollable Widgets */}
+      {subTab === 'trending' && !isError && (
+        <div className="space-y-3">
+          {/* Horizontal scrollable platform widgets */}
+          <div className="relative">
+            {/* Scroll hint gradients */}
+            <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-gray-50 to-transparent z-10 pointer-events-none" />
+            <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-gray-50 to-transparent z-10 pointer-events-none" />
+
+            {/* Scrollable container - shows 3.5 widgets */}
+            <div
+              className="flex gap-4 overflow-x-auto pb-4 px-2 scroll-smooth snap-x snap-mandatory"
+              style={{
+                scrollbarWidth: 'thin',
+                scrollbarColor: '#cbd5e1 transparent'
+              }}
+            >
+              {PLATFORMS.filter(p => selectedPlatforms.includes(p.id)).map((platform) => {
+                // Get topics for this platform
+                const platformTopics = trendingQuery.data?.topics?.filter(
+                  topic => topic.platforms.includes(platform.id)
+                ) || [];
+
+                return (
+                  <div key={platform.id} className="snap-start">
+                    <TrendingTopicWidget
+                      platform={platform}
+                      topics={platformTopics}
+                      isLoading={trendingQuery.isLoading}
+                      onWatch={handleWatch}
+                    />
+                  </div>
+                );
+              })}
             </div>
-          ) : (
+          </div>
+
+          {/* No data state */}
+          {!trendingQuery.isLoading && (!trendingQuery.data?.topics || trendingQuery.data.topics.length === 0) && (
             <div className="text-center py-12 text-gray-400 text-sm">
               <p>No trending topics found for selected platforms.</p>
               <p className="mt-1 text-xs">Try selecting different platforms or regions.</p>

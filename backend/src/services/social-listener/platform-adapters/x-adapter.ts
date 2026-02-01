@@ -3,7 +3,7 @@
 
 import Parser from 'rss-parser';
 import type { PlatformAdapter, SocialPost, TrendingTopic } from './types';
-import { normalizeTopic, isGenericHashtag } from './types';
+import { normalizeTopic, isGenericHashtag, extractHashtags, filterGenericHashtags } from './types';
 
 const parser = new Parser({
   timeout: 12_000,
@@ -16,6 +16,12 @@ const parser = new Parser({
 // Alternative X/Twitter trend sources
 const TREND_SOURCES = [
   { url: 'https://trends24.in/feed/', name: 'Trends24' },
+];
+
+// Google News RSS for Twitter/X trending content
+const X_NEWS_FEEDS = [
+  'https://news.google.com/rss/search?q=twitter+trending+viral&hl=en-US&gl=US&ceid=US:en',
+  'https://news.google.com/rss/search?q=x+twitter+viral+post&hl=en-US&gl=US&ceid=US:en',
 ];
 
 export class XAdapter implements PlatformAdapter {
@@ -31,24 +37,25 @@ export class XAdapter implements PlatformAdapter {
   }
 
   /**
-   * Convert X trending topics to post-like format for unified display
-   * (Actual tweets require official API access)
+   * Fetch X/Twitter content from multiple sources
+   * Combines trending topics with news about viral Twitter content
    */
   async getViralPosts(options?: {
     region?: string;
     limit?: number;
   }): Promise<SocialPost[]> {
     const { region, limit = 20 } = options || {};
-    const topics = await this.getTrending(region);
+    const allPosts: SocialPost[] = [];
 
-    // Convert trending topics to post-like format
-    return topics.slice(0, limit).map((topic) => ({
+    // Get trending topics first
+    const topics = await this.getTrending(region);
+    const topicPosts = topics.slice(0, Math.ceil(limit / 2)).map((topic) => ({
       platform: 'x' as const,
       externalId: `x-${topic.normalizedName}`,
       authorHandle: 'X Trending',
       authorName: topic.hashtag || topic.name,
       authorFollowers: null,
-      content: topic.name,
+      content: `Trending on X: ${topic.name}`,
       postUrl: topic.url,
       mediaUrls: [],
       likes: topic.engagement,
@@ -61,6 +68,22 @@ export class XAdapter implements PlatformAdapter {
       category: 'Trending',
       postedAt: new Date(),
     }));
+    allPosts.push(...topicPosts);
+
+    // Also fetch Twitter/X news from Google News
+    const newsPosts = await this.fetchTwitterNews(region, limit);
+    allPosts.push(...newsPosts);
+
+    // Dedupe and sort
+    const seen = new Set<string>();
+    const uniquePosts = allPosts.filter(post => {
+      if (seen.has(post.externalId)) return false;
+      seen.add(post.externalId);
+      return true;
+    });
+    uniquePosts.sort((a, b) => (b.likes + b.views) - (a.likes + a.views));
+
+    return uniquePosts.slice(0, limit);
   }
 
   /**
@@ -94,6 +117,50 @@ export class XAdapter implements PlatformAdapter {
   // -------------------------------------------------------------------------
   // Private helpers
   // -------------------------------------------------------------------------
+
+  private async fetchTwitterNews(region: string | undefined, limit: number): Promise<SocialPost[]> {
+    const posts: SocialPost[] = [];
+
+    for (const feedUrl of X_NEWS_FEEDS) {
+      try {
+        const feed = await parser.parseURL(feedUrl);
+
+        for (const item of (feed.items || []).slice(0, Math.ceil(limit / 2))) {
+          const title = item.title || '';
+          // Skip if doesn't seem Twitter/X related
+          const lowerTitle = title.toLowerCase();
+          if (!lowerTitle.includes('twitter') && !lowerTitle.includes('x ') && !lowerTitle.includes(' x') && !lowerTitle.includes('tweet')) continue;
+
+          const rawHashtags = extractHashtags(title);
+          posts.push({
+            platform: 'x',
+            externalId: `x-news-${Buffer.from(item.link || title).toString('base64').slice(0, 20)}`,
+            authorHandle: item.creator || 'Twitter/X News',
+            authorName: item.creator || 'Viral on X',
+            authorFollowers: null,
+            content: title,
+            postUrl: item.link || null,
+            mediaUrls: [],
+            likes: 500,
+            reposts: 0,
+            comments: 0,
+            views: 5000,
+            hashtags: filterGenericHashtags(rawHashtags),
+            topics: ['X Trending'],
+            region: region || 'global',
+            category: 'Trending',
+            postedAt: item.pubDate ? new Date(item.pubDate) : new Date(),
+          });
+        }
+      } catch (error) {
+        console.warn(`[x-adapter] Google News RSS error:`, error);
+      }
+
+      if (posts.length >= limit) break;
+    }
+
+    return posts.slice(0, limit);
+  }
 
   private async fetchTrendRSS(url: string, sourceName: string): Promise<TrendingTopic[]> {
     try {
