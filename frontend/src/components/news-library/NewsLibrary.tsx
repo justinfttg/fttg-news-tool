@@ -166,10 +166,9 @@ export function NewsLibrary({ projectId }: NewsLibraryProps) {
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
-      // Invalidate all news feed queries to force refetch
-      await queryClient.invalidateQueries({ queryKey: ['newsFeed'] });
-      // Also refetch to ensure immediate update
-      await feedQuery.refetch();
+      // For infinite queries, we need to reset (clear cache + refetch from page 1)
+      // This ensures we get truly fresh data, not just re-fetch existing pages
+      await queryClient.resetQueries({ queryKey: ['newsFeed'] });
       setLastRefreshed(new Date());
     } finally {
       setIsRefreshing(false);

@@ -1,6 +1,7 @@
 // Main Social Listener view component
 
 import { useState, useRef, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useViralPosts, useTrendingTopics, useWatchedTrends } from '../../hooks/useSocialListener';
 import { WatchedTrendCard } from './WatchedTrendCard';
 import { WatchTrendModal } from './WatchTrendModal';
@@ -34,6 +35,7 @@ interface SocialListenerViewProps {
 }
 
 export function SocialListenerView({ projectId, regions: initialRegions }: SocialListenerViewProps) {
+  const queryClient = useQueryClient();
   const [subTab, setSubTab] = useState<SubTab>('viral');
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([
     'reddit',
@@ -164,10 +166,15 @@ export function SocialListenerView({ projectId, regions: initialRegions }: Socia
 
         {/* Refresh button */}
         <button
-          onClick={() => {
-            if (subTab === 'viral') viralQuery.refetch();
-            else if (subTab === 'trending') trendingQuery.refetch();
-            else watchedQuery.refetch();
+          onClick={async () => {
+            // Use resetQueries to clear cache and refetch fresh data
+            if (subTab === 'viral') {
+              await queryClient.resetQueries({ queryKey: ['viralPosts'] });
+            } else if (subTab === 'trending') {
+              await queryClient.resetQueries({ queryKey: ['trendingTopics'] });
+            } else {
+              await queryClient.resetQueries({ queryKey: ['watchedTrends'] });
+            }
           }}
           className="ml-auto flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-md"
         >
