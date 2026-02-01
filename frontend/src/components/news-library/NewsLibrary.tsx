@@ -3,6 +3,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useNewsFeed, useMarkedStories, useMarkedIds } from '../../hooks/useNews';
 import { StoryCard } from './StoryCard';
 import { NewsStory } from '../../types';
+import { useAuth } from '../../context/AuthContext';
+import api from '../../services/api';
 
 const REGIONS = [
   { value: 'singapore', label: 'Singapore' },
@@ -37,11 +39,14 @@ interface NewsLibraryProps {
 
 export function NewsLibrary({ projectId }: NewsLibraryProps) {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('latest');
   const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
   const [category, setCategory] = useState('All');
   const [search, setSearch] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
+  const [fetchResult, setFetchResult] = useState<string | null>(null);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
   const [showRegionDropdown, setShowRegionDropdown] = useState(false);
 
@@ -172,6 +177,26 @@ export function NewsLibrary({ projectId }: NewsLibraryProps) {
       setLastRefreshed(new Date());
     } finally {
       setIsRefreshing(false);
+    }
+  };
+
+  // --- Fetch new stories from RSS (admin only) ---
+  const handleFetchNews = async () => {
+    if (!user?.is_fttg_team) return;
+
+    setIsFetching(true);
+    setFetchResult(null);
+    try {
+      const { data } = await api.post('/cron/news-fetcher');
+      const msg = `Fetched ${data.inserted} new stories (${data.skipped} duplicates skipped)`;
+      setFetchResult(msg);
+      // Refresh the feed to show new stories
+      await queryClient.resetQueries({ queryKey: ['newsFeed'] });
+      setLastRefreshed(new Date());
+    } catch (error: any) {
+      setFetchResult(`Error: ${error.response?.data?.error || error.message}`);
+    } finally {
+      setIsFetching(false);
     }
   };
 
@@ -309,27 +334,58 @@ export function NewsLibrary({ projectId }: NewsLibraryProps) {
                   Updated {lastRefreshed.toLocaleTimeString()}
                 </span>
               )}
+              {fetchResult && (
+                <span className={`text-xs ${fetchResult.startsWith('Error') ? 'text-red-500' : 'text-green-600'}`}>
+                  {fetchResult}
+                </span>
+              )}
             </div>
-            <button
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <svg
-                className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+            <div className="flex items-center gap-2">
+              {/* Fetch Latest - Admin only */}
+              {user?.is_fttg_team && (
+                <button
+                  onClick={handleFetchNews}
+                  disabled={isFetching}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <svg
+                    className={`w-3.5 h-3.5 ${isFetching ? 'animate-pulse' : ''}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                    />
+                  </svg>
+                  {isFetching ? 'Fetching...' : 'Fetch Latest'}
+                </button>
+              )}
+              {/* Refresh button */}
+              <button
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                />
-              </svg>
-              {isRefreshing ? 'Refreshing...' : 'Refresh'}
-            </button>
+                <svg
+                  className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  />
+                </svg>
+                {isRefreshing ? 'Refreshing...' : 'Refresh'}
+              </button>
+            </div>
           </div>
 
           {/* Filters */}
