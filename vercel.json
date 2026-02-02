@@ -16,6 +16,10 @@
     {
       "path": "/api/cron/trending-updater",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/topic-generator",
+      "schedule": "0 * * * *"
     }
   ]
 }

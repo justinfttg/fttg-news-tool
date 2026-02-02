@@ -1,13 +1,13 @@
 import { cors } from '../_cors';
 import { withAuth } from '../_auth';
-import { listHandler } from '../../backend/api/angles/generate';
+import { previewClustersHandler } from '../../backend/api/topics/proposals';
 
 export default async function (req: any, res: any) {
   if (cors(req, res)) return;
 
-  if (req.method !== 'GET') {
+  if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  return withAuth(listHandler)(req, res);
+  return withAuth(previewClustersHandler)(req, res);
 }

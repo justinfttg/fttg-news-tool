@@ -178,3 +178,125 @@ export interface Approval {
   comments: string | null;
   created_at: string;
 }
+
+// ============================================================================
+// Topic Proposals (replaces individual StoryAngle)
+// ============================================================================
+
+export interface TalkingPoint {
+  point: string;
+  supporting_detail: string;
+  duration_estimate_seconds: number;
+  audience_framing?: string;
+}
+
+export interface ResearchCitation {
+  title: string;
+  url: string;
+  source_type: 'statistic' | 'study' | 'expert_opinion' | 'news';
+  snippet: string;
+  accessed_at: string;
+  relevance_to_audience?: string;
+}
+
+export interface TrendingContext {
+  trend_query: string;
+  platforms: string[];
+  viral_posts?: Array<{
+    platform: string;
+    content: string;
+    engagement_score: number;
+    post_url?: string;
+  }>;
+}
+
+export interface TopicProposal {
+  id: string;
+  project_id: string;
+  created_by_user_id: string | null;
+
+  // Content
+  title: string;
+  hook: string;
+  audience_care_statement: string | null;
+  talking_points: TalkingPoint[];
+  research_citations: ResearchCitation[];
+
+  // Clustering
+  source_story_ids: string[];
+  cluster_theme: string | null;
+  cluster_keywords: string[];
+
+  // Duration
+  duration_type: 'short' | 'standard' | 'long' | 'custom';
+  duration_seconds: number;
+
+  // Generation metadata
+  generation_trigger: 'auto' | 'manual';
+  audience_profile_id: string | null;
+  comparison_regions: string[];
+  trending_context: TrendingContext[];
+
+  // Status
+  status: 'draft' | 'reviewed' | 'approved' | 'rejected' | 'archived';
+  review_notes: string | null;
+
+  // Timestamps
+  created_at: string;
+  updated_at: string;
+
+  // Joined data (optional, when fetched with relations)
+  audience_profile?: AudienceProfile;
+  source_stories?: NewsStory[];
+}
+
+export interface TopicGeneratorSettings {
+  id: string;
+  project_id: string;
+
+  // Auto-generation
+  auto_generation_enabled: boolean;
+  auto_generation_time: string;
+  auto_generation_timezone: string;
+
+  // Story aggregation
+  time_window_days: number;
+  min_stories_for_cluster: number;
+  max_proposals_per_run: number;
+
+  // Content focus
+  focus_categories: string[];
+  comparison_regions: string[];
+
+  // Defaults
+  default_duration_type: 'short' | 'standard' | 'long' | 'custom';
+  default_duration_seconds: number;
+  default_audience_profile_id: string | null;
+
+  // Options
+  include_trending_context: boolean;
+
+  // Timestamps
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TopicCluster {
+  theme: string;
+  keywords: string[];
+  story_ids: string[];
+  relevance_score: number;
+  audience_relevance?: string;
+  stories?: NewsStory[];
+}
+
+export interface TopicClustersCache {
+  id: string;
+  project_id: string;
+  audience_profile_id: string | null;
+  clusters: TopicCluster[];
+  stories_hash: string | null;
+  trends_hash: string | null;
+  created_at: string;
+  expires_at: string;
+}

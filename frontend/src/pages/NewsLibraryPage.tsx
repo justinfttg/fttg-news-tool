@@ -37,10 +37,10 @@ export function NewsLibraryPage() {
           Social Listener
         </Link>
         <Link
-          to={`/project/${id}/flagged`}
+          to={`/project/${id}/topics`}
           className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700"
         >
-          Flagged Stories
+          Topic Proposals
         </Link>
         <Link
           to={`/project/${id}/audience`}

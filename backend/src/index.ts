@@ -37,13 +37,22 @@ import {
   deleteHandler as audienceDeleteHandler,
 } from '../api/audience/profiles';
 import { analyzeHandler as audienceAnalyzeHandler } from '../api/audience/analyze';
+// Topic Proposal routes
 import {
-  generateHandler as angleGenerateHandler,
-  listHandler as angleListHandler,
-  getHandler as angleGetHandler,
-  updateStatusHandler as angleUpdateStatusHandler,
-  deleteHandler as angleDeleteHandler,
-} from '../api/angles/generate';
+  listHandler as topicProposalListHandler,
+  generateHandler as topicProposalGenerateHandler,
+  previewClustersHandler,
+} from '../api/topics/proposals';
+import {
+  getHandler as topicProposalGetHandler,
+  updateHandler as topicProposalUpdateHandler,
+  deleteHandler as topicProposalDeleteHandler,
+} from '../api/topics/proposal-by-id';
+import {
+  getSettingsHandler as topicSettingsGetHandler,
+  updateSettingsHandler as topicSettingsUpdateHandler,
+} from '../api/topics/settings';
+import topicGeneratorCronHandler from '../cron/topic-generator';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -86,16 +95,20 @@ app.put('/api/audience/profiles/:id', authMiddleware, audienceUpdateHandler);
 app.delete('/api/audience/profiles/:id', authMiddleware, audienceDeleteHandler);
 app.post('/api/audience/analyze', authMiddleware, audienceAnalyzeHandler);
 
-// Angle routes
-app.post('/api/angles/generate', authMiddleware, angleGenerateHandler);
-app.get('/api/angles', authMiddleware, angleListHandler);
-app.get('/api/angles/:id', authMiddleware, angleGetHandler);
-app.patch('/api/angles/:id/status', authMiddleware, angleUpdateStatusHandler);
-app.delete('/api/angles/:id', authMiddleware, angleDeleteHandler);
+// Topic Proposal routes
+app.get('/api/topics/proposals', authMiddleware, topicProposalListHandler);
+app.post('/api/topics/proposals', authMiddleware, topicProposalGenerateHandler);
+app.get('/api/topics/proposals/:id', authMiddleware, topicProposalGetHandler);
+app.patch('/api/topics/proposals/:id', authMiddleware, topicProposalUpdateHandler);
+app.delete('/api/topics/proposals/:id', authMiddleware, topicProposalDeleteHandler);
+app.post('/api/topics/preview-clusters', authMiddleware, previewClustersHandler);
+app.get('/api/topics/settings', authMiddleware, topicSettingsGetHandler);
+app.put('/api/topics/settings', authMiddleware, topicSettingsUpdateHandler);
 
 // Cron routes (auth handled inside handler — supports CRON_SECRET or admin JWT)
 app.post('/api/cron/news-fetch', newsFetcherHandler);
 app.post('/api/cron/trending-update', trendingUpdaterHandler);
+app.post('/api/cron/topic-generator', topicGeneratorCronHandler);
 
 // Error handler
 app.use(errorHandler);
