@@ -30,6 +30,7 @@ export default function ProposalGenerationModal({
   const [durationType, setDurationType] = useState<DurationType>('standard');
   const [customDuration, setCustomDuration] = useState(180);
   const [comparisonRegions, setComparisonRegions] = useState<string[]>([]);
+  const [regionsInput, setRegionsInput] = useState('');
   const [maxProposals, setMaxProposals] = useState(5);
 
   // Fetch audience profiles
@@ -54,7 +55,10 @@ export default function ProposalGenerationModal({
   useEffect(() => {
     if (settingsData?.settings) {
       const s = settingsData.settings;
-      if (s.comparison_regions) setComparisonRegions(s.comparison_regions);
+      if (s.comparison_regions) {
+        setComparisonRegions(s.comparison_regions);
+        setRegionsInput(s.comparison_regions.join(', '));
+      }
       if (s.default_duration_type) setDurationType(s.default_duration_type);
       if (s.default_duration_seconds) setCustomDuration(s.default_duration_seconds);
       if (s.max_proposals_per_run) setMaxProposals(s.max_proposals_per_run);
@@ -288,15 +292,16 @@ export default function ProposalGenerationModal({
                 </label>
                 <input
                   type="text"
-                  value={comparisonRegions.join(', ')}
-                  onChange={(e) =>
-                    setComparisonRegions(
-                      e.target.value
-                        .split(',')
-                        .map((r) => r.trim())
-                        .filter(Boolean)
-                    )
-                  }
+                  value={regionsInput}
+                  onChange={(e) => setRegionsInput(e.target.value)}
+                  onBlur={() => {
+                    const parsed = regionsInput
+                      .split(',')
+                      .map((r) => r.trim())
+                      .filter(Boolean);
+                    setComparisonRegions(parsed);
+                    setRegionsInput(parsed.join(', '));
+                  }}
                   placeholder="Singapore, Malaysia, United States"
                   className="w-full px-3 py-2 border rounded-lg text-sm"
                 />
