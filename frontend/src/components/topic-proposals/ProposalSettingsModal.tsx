@@ -54,6 +54,7 @@ export default function ProposalSettingsModal({ projectId, onClose }: ProposalSe
   const [maxProposalsPerRun, setMaxProposalsPerRun] = useState(5);
   const [focusCategories, setFocusCategories] = useState<string[]>([]);
   const [comparisonRegions, setComparisonRegions] = useState<string[]>(['Singapore', 'Malaysia']);
+  const [regionsInput, setRegionsInput] = useState('Singapore, Malaysia');
   const [defaultDurationType, setDefaultDurationType] = useState<DurationType>('standard');
   const [defaultAudienceProfileId, setDefaultAudienceProfileId] = useState<string | null>(null);
   const [includeTrendingContext, setIncludeTrendingContext] = useState(true);
@@ -69,7 +70,9 @@ export default function ProposalSettingsModal({ projectId, onClose }: ProposalSe
       setMinStoriesForCluster(s.min_stories_for_cluster || 2);
       setMaxProposalsPerRun(s.max_proposals_per_run || 5);
       setFocusCategories(s.focus_categories || []);
-      setComparisonRegions(s.comparison_regions || ['Singapore', 'Malaysia']);
+      const regions = s.comparison_regions || ['Singapore', 'Malaysia'];
+      setComparisonRegions(regions);
+      setRegionsInput(regions.join(', '));
       setDefaultDurationType(s.default_duration_type || 'standard');
       setDefaultAudienceProfileId(s.default_audience_profile_id || null);
       setIncludeTrendingContext(s.include_trending_context !== false);
@@ -287,15 +290,16 @@ export default function ProposalSettingsModal({ projectId, onClose }: ProposalSe
                 <label className="block text-sm text-gray-700 mb-1">Comparison Regions</label>
                 <input
                   type="text"
-                  value={comparisonRegions.join(', ')}
-                  onChange={(e) =>
-                    setComparisonRegions(
-                      e.target.value
-                        .split(',')
-                        .map((r) => r.trim())
-                        .filter(Boolean)
-                    )
-                  }
+                  value={regionsInput}
+                  onChange={(e) => setRegionsInput(e.target.value)}
+                  onBlur={() => {
+                    const parsed = regionsInput
+                      .split(',')
+                      .map((r) => r.trim())
+                      .filter(Boolean);
+                    setComparisonRegions(parsed);
+                    setRegionsInput(parsed.join(', '));
+                  }}
                   placeholder="Singapore, Malaysia, United States"
                   className="w-full px-3 py-2 border rounded-lg text-sm"
                 />
