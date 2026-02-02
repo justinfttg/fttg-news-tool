@@ -8,6 +8,7 @@ import {
   getTopicGeneratorSettings,
   getCachedClusters,
   saveClustersCache,
+  findSimilarProposals,
 } from '../../src/db/queries/topic-proposals.queries';
 import { getAudienceProfileById } from '../../src/db/queries/audience.queries';
 import {
@@ -355,11 +356,21 @@ export async function previewClustersHandler(req: Request, res: Response) {
     if (!input.forceRefresh) {
       const cached = await getCachedClusters(input.projectId, input.audienceProfileId);
       if (cached && cached.stories_hash === storiesHash && cached.trends_hash === trendsHash) {
-        // Enrich clusters with story data
-        const enrichedClusters = cached.clusters.map(cluster => ({
-          ...cluster,
-          stories: stories.filter(s => cluster.story_ids.includes(s.id)),
-        }));
+        // Enrich clusters with story data and similar proposals
+        const enrichedClusters = await Promise.all(
+          cached.clusters.map(async (cluster) => {
+            const similarProposals = await findSimilarProposals(
+              input.projectId,
+              cluster.story_ids,
+              { minOverlapPercentage: 50 }
+            );
+            return {
+              ...cluster,
+              stories: stories.filter(s => cluster.story_ids.includes(s.id)),
+              similar_proposals: similarProposals,
+            };
+          })
+        );
 
         return res.status(200).json({
           clusters: enrichedClusters,
@@ -385,11 +396,21 @@ export async function previewClustersHandler(req: Request, res: Response) {
       trendsHash
     );
 
-    // Enrich clusters with story data
-    const enrichedClusters = clusters.map(cluster => ({
-      ...cluster,
-      stories: stories.filter(s => cluster.story_ids.includes(s.id)),
-    }));
+    // Enrich clusters with story data and similar proposals
+    const enrichedClusters = await Promise.all(
+      clusters.map(async (cluster) => {
+        const similarProposals = await findSimilarProposals(
+          input.projectId,
+          cluster.story_ids,
+          { minOverlapPercentage: 50 }
+        );
+        return {
+          ...cluster,
+          stories: stories.filter(s => cluster.story_ids.includes(s.id)),
+          similar_proposals: similarProposals,
+        };
+      })
+    );
 
     return res.status(200).json({
       clusters: enrichedClusters,

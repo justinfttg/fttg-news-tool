@@ -515,3 +515,77 @@ export async function getProposalStats(projectId: string): Promise<{
     lastAutoGeneration,
   };
 }
+
+// ============================================================================
+// Similar Proposals Detection
+// ============================================================================
+
+export interface SimilarProposalInfo {
+  id: string;
+  title: string;
+  status: string;
+  cluster_theme: string | null;
+  source_story_ids: string[];
+  created_at: string;
+  overlap_count: number;
+  overlap_percentage: number;
+}
+
+/**
+ * Find existing proposals that share source stories with the given story IDs.
+ * This helps detect when regenerating might create duplicate content.
+ */
+export async function findSimilarProposals(
+  projectId: string,
+  storyIds: string[],
+  options?: {
+    excludeStatuses?: string[];
+    minOverlapPercentage?: number;
+  }
+): Promise<SimilarProposalInfo[]> {
+  if (storyIds.length === 0) return [];
+
+  // Get all proposals for the project
+  const { data, error } = await supabase
+    .from('topic_proposals')
+    .select('id, title, status, cluster_theme, source_story_ids, created_at')
+    .eq('project_id', projectId)
+    .not('status', 'eq', 'archived');
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const proposals = data || [];
+  const minOverlap = options?.minOverlapPercentage || 50;
+  const excludeStatuses = options?.excludeStatuses || [];
+
+  const similar: SimilarProposalInfo[] = [];
+
+  for (const proposal of proposals) {
+    if (excludeStatuses.includes(proposal.status)) continue;
+
+    const proposalStoryIds = proposal.source_story_ids as string[];
+    if (!proposalStoryIds || proposalStoryIds.length === 0) continue;
+
+    // Calculate overlap
+    const overlap = storyIds.filter(id => proposalStoryIds.includes(id));
+    const overlapPercentage = (overlap.length / Math.min(storyIds.length, proposalStoryIds.length)) * 100;
+
+    if (overlap.length > 0 && overlapPercentage >= minOverlap) {
+      similar.push({
+        id: proposal.id,
+        title: proposal.title,
+        status: proposal.status,
+        cluster_theme: proposal.cluster_theme,
+        source_story_ids: proposalStoryIds,
+        created_at: proposal.created_at,
+        overlap_count: overlap.length,
+        overlap_percentage: Math.round(overlapPercentage),
+      });
+    }
+  }
+
+  // Sort by overlap percentage descending
+  return similar.sort((a, b) => b.overlap_percentage - a.overlap_percentage);
+}

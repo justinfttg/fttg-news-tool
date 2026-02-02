@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { X, ChevronRight, ChevronLeft, Loader2, AlertCircle, Check } from 'lucide-react';
+import { X, ChevronRight, ChevronLeft, Loader2, AlertCircle, Check, AlertTriangle } from 'lucide-react';
 import { useAudienceProfiles } from '../../hooks/useAudience';
 import { usePreviewClusters, useGenerateProposals, useTopicGeneratorSettings } from '../../hooks/useTopicProposals';
-import type { AudienceProfile, TopicCluster, DurationType, NewsStory } from '../../types';
+import type { AudienceProfile, TopicCluster, DurationType, NewsStory, SimilarProposalInfo } from '../../types';
 
 interface ProposalGenerationModalProps {
   projectId: string;
@@ -421,10 +421,15 @@ function ClusterCard({
   isSelected,
   onToggle,
 }: {
-  cluster: TopicCluster & { stories?: NewsStory[] };
+  cluster: TopicCluster & { stories?: NewsStory[]; similar_proposals?: SimilarProposalInfo[] };
   isSelected: boolean;
   onToggle: () => void;
 }) {
+  const hasSimilar = cluster.similar_proposals && cluster.similar_proposals.length > 0;
+  const reviewedOrApproved = cluster.similar_proposals?.filter(
+    (p) => p.status === 'reviewed' || p.status === 'approved'
+  );
+
   return (
     <button
       onClick={onToggle}
@@ -464,10 +469,32 @@ function ClusterCard({
           <p className="text-xs text-gray-400 mt-2">
             {cluster.story_ids.length} {cluster.story_ids.length === 1 ? 'story' : 'stories'}
           </p>
+
+          {/* Similar proposals warning */}
+          {hasSimilar && (
+            <div className="mt-3 p-2 bg-amber-50 border border-amber-200 rounded-md">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                <div className="text-xs">
+                  <p className="text-amber-800 font-medium">
+                    Similar proposals exist ({cluster.similar_proposals!.length})
+                  </p>
+                  {reviewedOrApproved && reviewedOrApproved.length > 0 && (
+                    <p className="text-amber-700 mt-0.5">
+                      {reviewedOrApproved.length} reviewed/approved: {reviewedOrApproved.map((p) => `"${p.title.slice(0, 30)}${p.title.length > 30 ? '...' : ''}"`).join(', ')}
+                    </p>
+                  )}
+                  <p className="text-amber-600 mt-0.5">
+                    {cluster.similar_proposals![0].overlap_percentage}% story overlap
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div
-          className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+          className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
             isSelected ? 'border-blue-500 bg-blue-500' : 'border-gray-300'
           }`}
         >

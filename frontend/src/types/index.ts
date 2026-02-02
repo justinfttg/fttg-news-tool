@@ -220,6 +220,16 @@ export interface TopicGeneratorSettings {
   updated_at: string;
 }
 
+export interface SimilarProposalInfo {
+  id: string;
+  title: string;
+  status: string;
+  cluster_theme: string | null;
+  overlap_count: number;
+  overlap_percentage: number;
+  created_at: string;
+}
+
 export interface TopicCluster {
   theme: string;
   keywords: string[];
@@ -227,6 +237,7 @@ export interface TopicCluster {
   relevance_score: number;
   audience_relevance?: string;
   stories?: NewsStory[];
+  similar_proposals?: SimilarProposalInfo[];
 }
 
 export type DurationType = 'short' | 'standard' | 'long' | 'custom';
