@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import { supabase } from '../../src/db/client';
+import { authMiddleware } from '../../src/middleware/auth.middleware';
 import {
   getAudienceProfiles,
   getAudienceProfileById,
@@ -248,5 +249,33 @@ export async function deleteHandler(req: Request, res: Response) {
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to delete audience profile';
     return res.status(500).json({ error: message });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Default handler for Vercel serverless function
+// ---------------------------------------------------------------------------
+
+export default async function handler(req: Request, res: Response) {
+  // Apply auth middleware
+  try {
+    await new Promise<void>((resolve, reject) => {
+      authMiddleware(req, res, (err?: any) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+  } catch {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+
+  // Route based on method
+  switch (req.method) {
+    case 'GET':
+      return listHandler(req, res);
+    case 'POST':
+      return createHandler(req, res);
+    default:
+      return res.status(405).json({ error: 'Method not allowed' });
   }
 }
