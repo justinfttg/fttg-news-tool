@@ -300,3 +300,120 @@ export interface TopicClustersCache {
   created_at: string;
   expires_at: string;
 }
+
+// ============================================================================
+// Production Workflow Types
+// ============================================================================
+
+export type TimelineType = 'normal' | 'breaking_news' | 'emergency';
+
+export type ProductionStatus =
+  | 'topic_pending'
+  | 'topic_approved'
+  | 'script_development'
+  | 'script_review'
+  | 'script_approved'
+  | 'in_production'
+  | 'post_production'
+  | 'draft_review'
+  | 'final_review'
+  | 'delivered'
+  | 'published'
+  | 'cancelled';
+
+export type MilestoneType =
+  | 'topic_confirmation'
+  | 'script_deadline'
+  | 'script_approval'
+  | 'production_day'
+  | 'post_production'
+  | 'draft_1_review'
+  | 'draft_2_review'
+  | 'final_delivery'
+  | 'topic_approval'
+  | 'custom';
+
+export type MilestoneStatus = 'pending' | 'in_progress' | 'completed' | 'overdue' | 'skipped';
+
+export type CommentType = 'internal' | 'client_feedback' | 'revision_request';
+
+export interface ProductionEpisode {
+  id: string;
+  project_id: string;
+  topic_proposal_id: string | null;
+  calendar_item_id: string | null;
+  title: string;
+  episode_number: number | null;
+  tx_date: string;
+  tx_time: string | null;
+  timeline_type: TimelineType;
+  production_status: ProductionStatus;
+  client_approved_at: string | null;
+  client_approved_by_user_id: string | null;
+  internal_notes: string | null;
+  client_feedback: string | null;
+  created_at: string;
+  updated_at: string;
+  created_by_user_id: string | null;
+
+  // Joined data (optional)
+  milestones?: ProductionMilestone[];
+  topic_proposal?: TopicProposal;
+  calendar_item?: CalendarItem;
+}
+
+export interface ProductionMilestone {
+  id: string;
+  episode_id: string;
+  milestone_type: MilestoneType;
+  label: string | null;
+  deadline_date: string;
+  deadline_time: string | null;
+  status: MilestoneStatus;
+  completed_at: string | null;
+  completed_by_user_id: string | null;
+  notes: string | null;
+  is_client_facing: boolean;
+  requires_client_approval: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProposalComment {
+  id: string;
+  topic_proposal_id: string;
+  content: string;
+  parent_comment_id: string | null;
+  author_user_id: string;
+  comment_type: CommentType;
+  is_resolved: boolean;
+  resolved_at: string | null;
+  resolved_by_user_id: string | null;
+  created_at: string;
+  updated_at: string;
+
+  // Joined data (optional)
+  author?: User;
+  replies?: ProposalComment[];
+}
+
+export interface MilestoneOffset {
+  milestone_type: MilestoneType;
+  days_offset: number;
+  time: string | null;
+  label: string | null;
+  is_client_facing: boolean;
+  requires_client_approval: boolean;
+}
+
+export interface ProductionWorkflowTemplate {
+  id: string;
+  project_id: string;
+  name: string;
+  description: string | null;
+  timeline_type: TimelineType;
+  is_default: boolean;
+  milestone_offsets: MilestoneOffset[];
+  created_at: string;
+  updated_at: string;
+}
