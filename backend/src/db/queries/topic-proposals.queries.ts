@@ -21,6 +21,7 @@ const PROPOSAL_COLUMNS = `
   duration_type, duration_seconds,
   generation_trigger, audience_profile_id, comparison_regions, trending_context,
   status, review_notes,
+  linked_episode_id, scheduled_tx_date,
   created_at, updated_at
 `;
 
