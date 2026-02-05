@@ -46,6 +46,11 @@ export interface CalendarItem {
   notes: string | null;
   created_at: string;
   updated_at: string;
+  // Milestone fields
+  episode_id: string | null;
+  milestone_id: string | null;
+  milestone_type: string | null;
+  is_milestone: boolean;
 }
 
 export interface ProjectMember {
@@ -179,6 +184,10 @@ export interface TopicProposal {
   // Status
   status: 'draft' | 'reviewed' | 'approved' | 'rejected' | 'archived';
   review_notes: string | null;
+
+  // Production linking
+  linked_episode_id: string | null;
+  scheduled_tx_date: string | null;
 
   // Timestamps
   created_at: string;

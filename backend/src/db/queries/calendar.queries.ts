@@ -5,7 +5,7 @@ import type { CalendarItem } from '../../types';
 // Column selection (single source of truth)
 // ---------------------------------------------------------------------------
 
-const ITEM_COLUMNS = 'id, project_id, news_story_id, title, scheduled_date, scheduled_time, duration_seconds, status, selected_angle_id, script_id, created_by_user_id, approved_by_user_id, approved_at, notes, created_at, updated_at, episode_id, milestone_type, is_milestone';
+const ITEM_COLUMNS = 'id, project_id, news_story_id, title, scheduled_date, scheduled_time, duration_seconds, status, selected_angle_id, script_id, created_by_user_id, approved_by_user_id, approved_at, notes, created_at, updated_at, episode_id, milestone_type, is_milestone, milestone_id';
 
 // ---------------------------------------------------------------------------
 // Input types
@@ -20,6 +20,11 @@ export interface CreateCalendarItemInput {
   newsStoryId?: string;
   notes?: string;
   createdByUserId: string;
+  // Milestone-specific fields
+  episodeId?: string;
+  milestoneId?: string;
+  milestoneType?: string;
+  isMilestone?: boolean;
 }
 
 export interface UpdateCalendarItemInput {
@@ -99,6 +104,11 @@ export async function createCalendarItem(input: CreateCalendarItemInput): Promis
       notes: input.notes || null,
       created_by_user_id: input.createdByUserId,
       status: 'draft',
+      // Milestone-specific fields
+      episode_id: input.episodeId || null,
+      milestone_id: input.milestoneId || null,
+      milestone_type: input.milestoneType || null,
+      is_milestone: input.isMilestone || false,
     })
     .select(ITEM_COLUMNS)
     .single();
@@ -180,4 +190,84 @@ export async function countCalendarItems(projectId: string): Promise<number> {
   }
 
   return count || 0;
+}
+
+// ---------------------------------------------------------------------------
+// 7. createMilestoneCalendarItems — bulk create calendar items for milestones
+// ---------------------------------------------------------------------------
+
+export interface CreateMilestoneCalendarItemInput {
+  projectId: string;
+  episodeId: string;
+  milestoneId: string;
+  milestoneType: string;
+  title: string;
+  scheduledDate: string;
+  scheduledTime?: string;
+  createdByUserId: string;
+}
+
+export async function createMilestoneCalendarItems(
+  inputs: CreateMilestoneCalendarItemInput[]
+): Promise<CalendarItem[]> {
+  if (inputs.length === 0) return [];
+
+  const records = inputs.map((input) => ({
+    project_id: input.projectId,
+    title: input.title,
+    scheduled_date: input.scheduledDate,
+    scheduled_time: input.scheduledTime || null,
+    episode_id: input.episodeId,
+    milestone_id: input.milestoneId,
+    milestone_type: input.milestoneType,
+    is_milestone: true,
+    created_by_user_id: input.createdByUserId,
+    status: 'draft',
+  }));
+
+  const { data, error } = await supabase
+    .from('calendar_items')
+    .insert(records)
+    .select(ITEM_COLUMNS);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data || []) as CalendarItem[];
+}
+
+// ---------------------------------------------------------------------------
+// 8. deleteMilestoneCalendarItems — delete all milestone items for an episode
+// ---------------------------------------------------------------------------
+
+export async function deleteMilestoneCalendarItemsByEpisodeId(episodeId: string): Promise<void> {
+  const { error } = await supabase
+    .from('calendar_items')
+    .delete()
+    .eq('episode_id', episodeId)
+    .eq('is_milestone', true);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 9. getMilestoneCalendarItems — get all milestone items for an episode
+// ---------------------------------------------------------------------------
+
+export async function getMilestoneCalendarItemsByEpisodeId(episodeId: string): Promise<CalendarItem[]> {
+  const { data, error } = await supabase
+    .from('calendar_items')
+    .select(ITEM_COLUMNS)
+    .eq('episode_id', episodeId)
+    .eq('is_milestone', true)
+    .order('scheduled_date', { ascending: true });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data || []) as CalendarItem[];
 }

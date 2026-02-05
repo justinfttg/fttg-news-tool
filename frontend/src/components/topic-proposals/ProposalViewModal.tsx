@@ -13,6 +13,8 @@ import {
   AlertCircle,
   Calendar,
   Pencil,
+  FileText,
+  Video,
 } from 'lucide-react';
 import { useUpdateProposal, useDeleteProposal, useTopicProposal } from '../../hooks/useTopicProposals';
 import { useCommentCounts } from '../../hooks/useProposalComments';
@@ -21,6 +23,7 @@ import { getStatusColor, formatDuration, getDurationLabel } from '../../services
 import ProposalComments from './ProposalComments';
 import ScheduleProposalModal from './ScheduleProposalModal';
 import ProposalEditModal from './ProposalEditModal';
+import ContentEditor from '../episode-content/ContentEditor';
 import type { TopicProposal, ProposalStatus } from '../../types';
 
 interface ProposalViewModalProps {
@@ -31,7 +34,7 @@ interface ProposalViewModalProps {
   onDelete: () => void;
 }
 
-type TabType = 'details' | 'comments';
+type TabType = 'details' | 'comments' | 'video_script' | 'article';
 
 export default function ProposalViewModal({
   proposal: initialProposal,
@@ -135,10 +138,10 @@ export default function ProposalViewModal({
           </div>
 
           {/* Tabs */}
-          <div className="flex border-b px-6">
+          <div className="flex border-b px-6 overflow-x-auto">
             <button
               onClick={() => setActiveTab('details')}
-              className={`px-4 py-3 text-sm font-medium border-b-2 -mb-px ${
+              className={`px-4 py-3 text-sm font-medium border-b-2 -mb-px whitespace-nowrap ${
                 activeTab === 'details'
                   ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -148,7 +151,7 @@ export default function ProposalViewModal({
             </button>
             <button
               onClick={() => setActiveTab('comments')}
-              className={`px-4 py-3 text-sm font-medium border-b-2 -mb-px flex items-center gap-2 ${
+              className={`px-4 py-3 text-sm font-medium border-b-2 -mb-px flex items-center gap-2 whitespace-nowrap ${
                 activeTab === 'comments'
                   ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -166,6 +169,33 @@ export default function ProposalViewModal({
                 </span>
               )}
             </button>
+            {/* Video Script and Article tabs - only show if episode is linked */}
+            {proposal.linked_episode_id && (
+              <>
+                <button
+                  onClick={() => setActiveTab('video_script')}
+                  className={`px-4 py-3 text-sm font-medium border-b-2 -mb-px flex items-center gap-2 whitespace-nowrap ${
+                    activeTab === 'video_script'
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  <Video className="w-4 h-4" />
+                  Video Script
+                </button>
+                <button
+                  onClick={() => setActiveTab('article')}
+                  className={`px-4 py-3 text-sm font-medium border-b-2 -mb-px flex items-center gap-2 whitespace-nowrap ${
+                    activeTab === 'article'
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  <FileText className="w-4 h-4" />
+                  Article
+                </button>
+              </>
+            )}
           </div>
 
           {/* Content */}
@@ -329,12 +359,32 @@ export default function ProposalViewModal({
                   )}
                 </div>
               </div>
-            ) : (
+            ) : activeTab === 'comments' ? (
               <ProposalComments
                 proposalId={proposal.id}
                 currentUserId={user?.id || ''}
               />
-            )}
+            ) : activeTab === 'video_script' && proposal.linked_episode_id ? (
+              <div className="h-[60vh]">
+                <ContentEditor
+                  episodeId={proposal.linked_episode_id}
+                  contentType="video_script"
+                  episodeTitle={proposal.title}
+                  canEdit={true}
+                  canApprove={true}
+                />
+              </div>
+            ) : activeTab === 'article' && proposal.linked_episode_id ? (
+              <div className="h-[60vh]">
+                <ContentEditor
+                  episodeId={proposal.linked_episode_id}
+                  contentType="article"
+                  episodeTitle={proposal.title}
+                  canEdit={true}
+                  canApprove={true}
+                />
+              </div>
+            ) : null}
           </div>
 
           {/* Footer */}

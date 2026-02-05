@@ -66,6 +66,11 @@ export interface CalendarItem {
   notes: string | null;
   created_at: string;
   updated_at: string;
+  // Milestone fields
+  episode_id: string | null;
+  milestone_id: string | null;
+  milestone_type: string | null;
+  is_milestone: boolean;
 }
 
 export interface StorytellingFramework {

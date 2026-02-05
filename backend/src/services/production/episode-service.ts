@@ -23,6 +23,8 @@ import {
   createCalendarItem,
   updateCalendarItem,
   deleteCalendarItem,
+  createMilestoneCalendarItems,
+  deleteMilestoneCalendarItemsByEpisodeId,
 } from '../../db/queries/calendar.queries';
 import {
   calculateMilestonesFromTxDate,
@@ -111,6 +113,19 @@ export async function scheduleEpisode(
     const milestoneInputs = toMilestoneInputs(episode.id, calculatedMilestones);
     const milestones = await createMilestones(milestoneInputs);
 
+    // Create calendar items for each milestone
+    const milestoneCalendarInputs = milestones.map((milestone) => ({
+      projectId: input.projectId,
+      episodeId: episode.id,
+      milestoneId: milestone.id,
+      milestoneType: milestone.milestone_type,
+      title: `Ep${episodeNumber}: ${milestone.label || milestone.milestone_type.replace(/_/g, ' ')}`,
+      scheduledDate: milestone.deadline_date,
+      scheduledTime: milestone.deadline_time || undefined,
+      createdByUserId: input.createdByUserId,
+    }));
+    await createMilestoneCalendarItems(milestoneCalendarInputs);
+
     // Update calendar item with episode link
     await updateCalendarItem(calendarItem.id, {
       episodeId: episode.id,
@@ -151,7 +166,8 @@ export async function rescheduleEpisode(
   // Recalculate milestone dates
   const updatedMilestones = recalculateMilestoneDates(milestones, oldTxDate, input.newTxDate);
 
-  // Update all milestones in a batch
+  // Update all milestones in a batch and collect their new dates
+  const milestoneNewDates: Map<string, string> = new Map();
   for (const update of updatedMilestones) {
     const milestone = milestones.find((m) => m.id === update.id);
     if (milestone) {
@@ -165,6 +181,22 @@ export async function rescheduleEpisode(
       await updateMilestone(update.id, {
         deadlineDate: update.deadlineDate,
         status: newStatus,
+      });
+      milestoneNewDates.set(update.id, update.deadlineDate);
+    }
+  }
+
+  // Update milestone calendar items with new dates
+  for (const [milestoneId, newDate] of milestoneNewDates) {
+    const { data: calendarItems } = await supabase
+      .from('calendar_items')
+      .select('id')
+      .eq('milestone_id', milestoneId)
+      .eq('is_milestone', true);
+
+    if (calendarItems && calendarItems.length > 0) {
+      await updateCalendarItem(calendarItems[0].id, {
+        scheduledDate: newDate,
       });
     }
   }
@@ -240,7 +272,10 @@ export async function removeEpisode(episodeId: string): Promise<void> {
     await unlinkProposalFromEpisode(episode.topic_proposal_id);
   }
 
-  // Delete calendar item if exists
+  // Delete milestone calendar items first
+  await deleteMilestoneCalendarItemsByEpisodeId(episodeId);
+
+  // Delete main calendar item if exists
   if (episode.calendar_item_id) {
     await deleteCalendarItem(episode.calendar_item_id);
   }

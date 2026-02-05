@@ -9,7 +9,7 @@ import { format, startOfMonth, endOfMonth, subDays, addDays } from 'date-fns';
 import type { CalendarItem, ProductionEpisode } from '../../types';
 import { useCalendarItems, useUpdateCalendarItem, useCreateCalendarItem } from '../../hooks/useCalendar';
 import { useEpisodes } from '../../hooks/useEpisodes';
-import { CalendarItemContent, statusColors, statusTextColors } from './CalendarItem';
+import { CalendarItemContent, statusColors, statusTextColors, milestoneColors, milestoneTextColors } from './CalendarItem';
 import { CalendarItemModal } from './CalendarItemModal';
 
 type StatusFilter = CalendarItem['status'] | 'all';
@@ -63,18 +63,39 @@ export function CalendarView({ projectId }: CalendarViewProps) {
   // Map CalendarItems to FullCalendar EventInput
   const events: EventInput[] = useMemo(
     () =>
-      filteredItems.map((item) => ({
-        id: item.id,
-        title: (item.news_story_id || (item as any).episode_id) ? item.title : 'Empty Slot',
-        start: item.scheduled_time
-          ? `${item.scheduled_date}T${item.scheduled_time}`
-          : item.scheduled_date,
-        allDay: !item.scheduled_time,
-        backgroundColor: statusColors[item.status],
-        borderColor: statusColors[item.status],
-        textColor: statusTextColors[item.status],
-        extendedProps: { calendarItem: item },
-      })),
+      filteredItems.map((item) => {
+        // Use milestone colors if it's a milestone
+        if (item.is_milestone && item.milestone_type) {
+          const bgColor = milestoneColors[item.milestone_type] || milestoneColors.default;
+          const txtColor = milestoneTextColors[item.milestone_type] || milestoneTextColors.default;
+          return {
+            id: item.id,
+            title: item.title,
+            start: item.scheduled_time
+              ? `${item.scheduled_date}T${item.scheduled_time}`
+              : item.scheduled_date,
+            allDay: !item.scheduled_time,
+            backgroundColor: bgColor,
+            borderColor: bgColor,
+            textColor: txtColor,
+            extendedProps: { calendarItem: item },
+          };
+        }
+
+        // Regular calendar item
+        return {
+          id: item.id,
+          title: (item.news_story_id || item.episode_id) ? item.title : 'Empty Slot',
+          start: item.scheduled_time
+            ? `${item.scheduled_date}T${item.scheduled_time}`
+            : item.scheduled_date,
+          allDay: !item.scheduled_time,
+          backgroundColor: statusColors[item.status],
+          borderColor: statusColors[item.status],
+          textColor: statusTextColors[item.status],
+          extendedProps: { calendarItem: item },
+        };
+      }),
     [filteredItems]
   );
 
