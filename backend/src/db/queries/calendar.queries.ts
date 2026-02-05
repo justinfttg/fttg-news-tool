@@ -39,12 +39,6 @@ export interface UpdateCalendarItemInput {
   isMilestone?: boolean;
 }
 
-export interface BulkCreateInput {
-  projectId: string;
-  createdByUserId: string;
-  dates: string[]; // YYYY-MM-DD strings
-}
-
 // ---------------------------------------------------------------------------
 // 1. getCalendarItems — list items for a project within a date range
 // ---------------------------------------------------------------------------
@@ -171,36 +165,7 @@ export async function deleteCalendarItem(id: string): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
-// 6. bulkCreateCalendarItems — used by the auto-scheduler
-// ---------------------------------------------------------------------------
-
-export async function bulkCreateCalendarItems(input: BulkCreateInput): Promise<CalendarItem[]> {
-  const rows = input.dates.map((date, idx) => ({
-    project_id: input.projectId,
-    title: `Slot ${idx + 1}`,
-    scheduled_date: date,
-    scheduled_time: null,
-    duration_seconds: null,
-    news_story_id: null,
-    notes: null,
-    created_by_user_id: input.createdByUserId,
-    status: 'draft' as const,
-  }));
-
-  const { data, error } = await supabase
-    .from('calendar_items')
-    .insert(rows)
-    .select(ITEM_COLUMNS);
-
-  if (error || !data) {
-    throw new Error(error?.message || 'Failed to bulk create calendar items');
-  }
-
-  return data as CalendarItem[];
-}
-
-// ---------------------------------------------------------------------------
-// 7. countCalendarItems — for quota tracking
+// 6. countCalendarItems — for quota tracking
 // ---------------------------------------------------------------------------
 
 export async function countCalendarItems(projectId: string): Promise<number> {

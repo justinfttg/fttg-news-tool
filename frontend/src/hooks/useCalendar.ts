@@ -4,7 +4,6 @@ import {
   createCalendarItem,
   updateCalendarItem,
   deleteCalendarItem,
-  generateSchedule,
 } from '../services/calendar.service';
 
 /**
@@ -51,17 +50,6 @@ export function useDeleteCalendarItem(projectId: string | undefined) {
 
   return useMutation({
     mutationFn: deleteCalendarItem,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['calendarItems', projectId] });
-    },
-  });
-}
-
-export function useAutoSchedule(projectId: string | undefined) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: () => generateSchedule(projectId!),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['calendarItems', projectId] });
     },

@@ -7,7 +7,7 @@ import type { EventInput, EventContentArg, DateSelectArg, EventDropArg, EventCli
 import { format, startOfMonth, endOfMonth, subDays, addDays } from 'date-fns';
 
 import type { CalendarItem } from '../../types';
-import { useCalendarItems, useUpdateCalendarItem, useAutoSchedule, useCreateCalendarItem } from '../../hooks/useCalendar';
+import { useCalendarItems, useUpdateCalendarItem, useCreateCalendarItem } from '../../hooks/useCalendar';
 import { CalendarItemContent, statusColors, statusTextColors } from './CalendarItem';
 import { CalendarItemModal } from './CalendarItemModal';
 
@@ -38,7 +38,6 @@ export function CalendarView({ projectId }: CalendarViewProps) {
 
   const { data: items, isLoading } = useCalendarItems(projectId, startDate, endDate);
   const updateMutation = useUpdateCalendarItem(projectId);
-  const autoSchedule = useAutoSchedule(projectId);
   const createItem = useCreateCalendarItem(projectId);
 
   // Filter items by status
@@ -133,25 +132,7 @@ export function CalendarView({ projectId }: CalendarViewProps) {
             </span>
           )}
         </div>
-        <button
-          onClick={() => autoSchedule.mutate()}
-          disabled={autoSchedule.isPending}
-          className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 text-sm font-medium disabled:opacity-50"
-        >
-          {autoSchedule.isPending ? 'Scheduling...' : 'Auto-Schedule'}
-        </button>
       </div>
-
-      {autoSchedule.isSuccess && (
-        <div className="mb-4 px-4 py-2 bg-green-50 border border-green-200 rounded-md text-sm text-green-700">
-          Created {(autoSchedule.data as any)?.created ?? 0} calendar slots.
-        </div>
-      )}
-      {autoSchedule.error && (
-        <div className="mb-4 px-4 py-2 bg-red-50 border border-red-200 rounded-md text-sm text-red-600">
-          {(autoSchedule.error as any)?.response?.data?.error || 'Failed to auto-schedule'}
-        </div>
-      )}
 
       {/* Calendar */}
       <div className="bg-white rounded-lg border border-gray-200 p-4">

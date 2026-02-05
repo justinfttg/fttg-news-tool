@@ -46,13 +46,3 @@ export async function updateCalendarItem(
 export async function deleteCalendarItem(id: string): Promise<void> {
   await api.delete(`/calendar/items/${id}`);
 }
-
-export async function generateSchedule(
-  projectId: string
-): Promise<{ items: CalendarItem[]; created: number }> {
-  const { data } = await api.post<{ items: CalendarItem[]; created: number }>(
-    '/calendar/schedule',
-    { projectId }
-  );
-  return data;
-}
