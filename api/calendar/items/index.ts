@@ -1,11 +1,9 @@
-import { cors } from '../_cors';
-import { authenticate } from '../_auth';
+import { cors } from '../../_cors';
+import { authenticate } from '../../_auth';
 import {
   listHandler,
   createHandler,
-  updateHandler,
-  deleteHandler,
-} from '../../backend/api/calendar/items';
+} from '../../../backend/api/calendar/items';
 
 export default async function handler(req: any, res: any) {
   if (cors(req, res)) return;
@@ -20,10 +18,6 @@ export default async function handler(req: any, res: any) {
       return listHandler(req, res);
     case 'POST':
       return createHandler(req, res);
-    case 'PUT':
-      return updateHandler(req, res);
-    case 'DELETE':
-      return deleteHandler(req, res);
     default:
       return res.status(405).json({ error: 'Method not allowed' });
   }
