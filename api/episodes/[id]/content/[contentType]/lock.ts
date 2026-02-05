@@ -16,7 +16,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   (req as any).params = {
-    episodeId: req.query.episodeId,
+    id: req.query.id,
     contentType: req.query.contentType,
   };
 

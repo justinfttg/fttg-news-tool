@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { cors } from '../../../../_cors';
 import { authenticate } from '../../../../_auth';
-import { getFeedbackHandler, addFeedbackHandler } from '../../../../../backend/api/episodes/content';
+import { submitHandler } from '../../../../../backend/api/episodes/content';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (cors(req, res)) return;
@@ -11,17 +11,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(401).json({ error: 'Authentication required' });
   }
 
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
   (req as any).params = {
-    episodeId: req.query.episodeId,
+    id: req.query.id,
     contentType: req.query.contentType,
   };
 
-  switch (req.method) {
-    case 'GET':
-      return getFeedbackHandler(req as any, res as any);
-    case 'POST':
-      return addFeedbackHandler(req as any, res as any);
-    default:
-      return res.status(405).json({ error: 'Method not allowed' });
-  }
+  return submitHandler(req as any, res as any);
 }
