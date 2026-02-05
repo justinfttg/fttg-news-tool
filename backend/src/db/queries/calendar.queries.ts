@@ -5,7 +5,7 @@ import type { CalendarItem } from '../../types';
 // Column selection (single source of truth)
 // ---------------------------------------------------------------------------
 
-const ITEM_COLUMNS = 'id, project_id, news_story_id, title, scheduled_date, scheduled_time, duration_seconds, status, selected_angle_id, script_id, created_by_user_id, approved_by_user_id, approved_at, notes, created_at, updated_at';
+const ITEM_COLUMNS = 'id, project_id, news_story_id, title, scheduled_date, scheduled_time, duration_seconds, status, selected_angle_id, script_id, created_by_user_id, approved_by_user_id, approved_at, notes, created_at, updated_at, episode_id, milestone_type, is_milestone';
 
 // ---------------------------------------------------------------------------
 // Input types
@@ -34,6 +34,9 @@ export interface UpdateCalendarItemInput {
   notes?: string | null;
   approvedByUserId?: string | null;
   approvedAt?: string | null;
+  episodeId?: string | null;
+  milestoneType?: string | null;
+  isMilestone?: boolean;
 }
 
 export interface BulkCreateInput {
@@ -134,6 +137,9 @@ export async function updateCalendarItem(
   if (input.notes !== undefined) payload.notes = input.notes;
   if (input.approvedByUserId !== undefined) payload.approved_by_user_id = input.approvedByUserId;
   if (input.approvedAt !== undefined) payload.approved_at = input.approvedAt;
+  if (input.episodeId !== undefined) payload.episode_id = input.episodeId;
+  if (input.milestoneType !== undefined) payload.milestone_type = input.milestoneType;
+  if (input.isMilestone !== undefined) payload.is_milestone = input.isMilestone;
 
   const { data, error } = await supabase
     .from('calendar_items')

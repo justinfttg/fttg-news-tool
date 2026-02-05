@@ -113,8 +113,7 @@ export async function scheduleEpisode(
 
     // Update calendar item with episode link
     await updateCalendarItem(calendarItem.id, {
-      // @ts-expect-error - episode_id is a new column
-      episode_id: episode.id,
+      episodeId: episode.id,
     });
 
     // Link proposal to episode if provided

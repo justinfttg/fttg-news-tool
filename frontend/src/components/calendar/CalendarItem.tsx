@@ -37,12 +37,13 @@ interface CalendarItemProps {
 
 export function CalendarItemContent({ item }: CalendarItemProps) {
   const config = statusConfig[item.status];
-  const hasStory = !!item.news_story_id;
+  // Show title if there's a news story or an episode linked
+  const hasContent = !!item.news_story_id || !!(item as any).episode_id;
 
   return (
     <div className="px-1 py-0.5 text-xs leading-tight overflow-hidden w-full">
       <div className="font-medium truncate">
-        {hasStory ? item.title : 'Empty Slot'}
+        {hasContent ? item.title : 'Empty Slot'}
       </div>
       <div className="flex items-center gap-1 mt-0.5">
         <span className={`inline-block px-1 rounded ${config.bg} ${config.text}`} style={{ fontSize: '10px' }}>

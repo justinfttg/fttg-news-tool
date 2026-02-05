@@ -53,7 +53,7 @@ export function CalendarView({ projectId }: CalendarViewProps) {
     () =>
       filteredItems.map((item) => ({
         id: item.id,
-        title: item.news_story_id ? item.title : 'Empty Slot',
+        title: (item.news_story_id || (item as any).episode_id) ? item.title : 'Empty Slot',
         start: item.scheduled_time
           ? `${item.scheduled_date}T${item.scheduled_time}`
           : item.scheduled_date,
