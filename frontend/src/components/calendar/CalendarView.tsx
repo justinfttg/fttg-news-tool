@@ -6,8 +6,9 @@ import interactionPlugin from '@fullcalendar/interaction';
 import type { EventInput, EventContentArg, DateSelectArg, EventDropArg, EventClickArg } from '@fullcalendar/core';
 import { format, startOfMonth, endOfMonth, subDays, addDays } from 'date-fns';
 
-import type { CalendarItem } from '../../types';
+import type { CalendarItem, ProductionEpisode } from '../../types';
 import { useCalendarItems, useUpdateCalendarItem, useCreateCalendarItem } from '../../hooks/useCalendar';
+import { useEpisodes } from '../../hooks/useEpisodes';
 import { CalendarItemContent, statusColors, statusTextColors } from './CalendarItem';
 import { CalendarItemModal } from './CalendarItemModal';
 
@@ -37,8 +38,20 @@ export function CalendarView({ projectId }: CalendarViewProps) {
   const endDate = format(addDays(endOfMonth(currentDate), 7), 'yyyy-MM-dd');
 
   const { data: items, isLoading } = useCalendarItems(projectId, startDate, endDate);
+  const { data: episodes = [] } = useEpisodes({ projectId, includeMilestones: false });
   const updateMutation = useUpdateCalendarItem(projectId);
   const createItem = useCreateCalendarItem(projectId);
+
+  // Create a map of calendar_item_id to episode for quick lookup
+  const episodeByCalendarItemId = useMemo(() => {
+    const map = new Map<string, ProductionEpisode>();
+    episodes.forEach((ep) => {
+      if (ep.calendar_item_id) {
+        map.set(ep.calendar_item_id, ep);
+      }
+    });
+    return map;
+  }, [episodes]);
 
   // Filter items by status
   const filteredItems = useMemo(() => {
@@ -160,7 +173,8 @@ export function CalendarView({ projectId }: CalendarViewProps) {
             datesSet={handleDatesSet}
             eventContent={(arg: EventContentArg) => {
               const item = arg.event.extendedProps.calendarItem as CalendarItem;
-              return <CalendarItemContent item={item} />;
+              const episode = episodeByCalendarItemId.get(item.id);
+              return <CalendarItemContent item={item} episode={episode} />;
             }}
             height="auto"
           />

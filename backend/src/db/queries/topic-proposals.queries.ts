@@ -63,6 +63,7 @@ export interface UpdateTopicProposalInput {
   audienceCareStatement?: string | null;
   talkingPoints?: TalkingPoint[];
   researchCitations?: ResearchCitation[];
+  sourceStoryIds?: string[];
   status?: 'draft' | 'reviewed' | 'approved' | 'rejected' | 'archived';
   reviewNotes?: string | null;
 }
@@ -195,6 +196,7 @@ export async function updateTopicProposal(
   if (input.audienceCareStatement !== undefined) payload.audience_care_statement = input.audienceCareStatement;
   if (input.talkingPoints !== undefined) payload.talking_points = input.talkingPoints;
   if (input.researchCitations !== undefined) payload.research_citations = input.researchCitations;
+  if (input.sourceStoryIds !== undefined) payload.source_story_ids = input.sourceStoryIds;
   if (input.status !== undefined) payload.status = input.status;
   if (input.reviewNotes !== undefined) payload.review_notes = input.reviewNotes;
 

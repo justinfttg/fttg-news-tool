@@ -29,6 +29,7 @@ const UpdateProposalSchema = z.object({
     accessed_at: z.string(),
     relevance_to_audience: z.string().optional(),
   })).optional(),
+  sourceStoryIds: z.array(z.string()).optional(),
   status: z.enum(['draft', 'reviewed', 'approved', 'rejected', 'archived']).optional(),
   reviewNotes: z.string().max(2000).nullable().optional(),
 });

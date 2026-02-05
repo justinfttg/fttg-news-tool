@@ -44,6 +44,7 @@ export interface UpdateProposalParams {
   audienceCareStatement?: string | null;
   talkingPoints?: TalkingPoint[];
   researchCitations?: ResearchCitation[];
+  sourceStoryIds?: string[];
   status?: ProposalStatus;
   reviewNotes?: string | null;
 }
@@ -127,6 +128,11 @@ export async function updateTopicProposal(id: string, params: UpdateProposalPara
 
 export async function deleteTopicProposal(id: string): Promise<void> {
   await api.delete(`/topics/proposals/${id}`);
+}
+
+export async function resynthesizeProposal(id: string): Promise<TopicProposal> {
+  const response = await api.post<{ proposal: TopicProposal }>(`/topics/proposals/${id}/resynthesize`);
+  return response.data.proposal;
 }
 
 export async function previewClusters(params: PreviewClustersParams): Promise<PreviewClustersResponse> {

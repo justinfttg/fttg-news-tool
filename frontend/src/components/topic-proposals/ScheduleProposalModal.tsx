@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
-import { X, Calendar, Clock, ChevronDown, AlertCircle, Check } from 'lucide-react';
-import { useCreateEpisode } from '../../hooks/useEpisodes';
+import { X, Calendar, Clock, ChevronDown, AlertCircle, Check, Hash } from 'lucide-react';
+import { useCreateEpisode, useEpisodes } from '../../hooks/useEpisodes';
 import { useWorkflowTemplates } from '../../hooks/useWorkflowTemplates';
 import { previewMilestones, getDefaultTemplate } from '../../services/workflow-templates.service';
 import { getTimelineTypeLabel } from '../../services/episode.service';
@@ -31,12 +31,21 @@ export default function ScheduleProposalModal({
 
   const [txDate, setTxDate] = useState(getNextFriday());
   const [txTime, setTxTime] = useState('18:00');
+  const [episodeNumber, setEpisodeNumber] = useState<number | ''>('');
   const [timelineType, setTimelineType] = useState<TimelineType>('normal');
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [showMilestonePreview, setShowMilestonePreview] = useState(true);
 
   const { data: templates = [] } = useWorkflowTemplates({ projectId });
+  const { data: existingEpisodes = [] } = useEpisodes({ projectId });
   const createEpisode = useCreateEpisode(projectId);
+
+  // Calculate next episode number based on existing episodes
+  const suggestedEpisodeNumber = useMemo(() => {
+    if (existingEpisodes.length === 0) return 1;
+    const maxNumber = Math.max(...existingEpisodes.map((ep) => ep.episode_number || 0));
+    return maxNumber + 1;
+  }, [existingEpisodes]);
 
   // Get templates for selected timeline type
   const filteredTemplates = useMemo(
@@ -66,6 +75,7 @@ export default function ScheduleProposalModal({
 
   const handleSubmit = async () => {
     try {
+      const epNumber = episodeNumber || suggestedEpisodeNumber;
       await createEpisode.mutateAsync({
         projectId,
         topicProposalId: proposal.id,
@@ -74,6 +84,7 @@ export default function ScheduleProposalModal({
         txTime,
         timelineType,
         templateId: selectedTemplateId || activeTemplate?.id,
+        episodeNumber: epNumber,
       });
       onScheduled();
     } catch (error) {
@@ -106,6 +117,27 @@ export default function ScheduleProposalModal({
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          {/* Episode Number */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Episode Number
+            </label>
+            <div className="relative w-32">
+              <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="number"
+                min="1"
+                value={episodeNumber}
+                onChange={(e) => setEpisodeNumber(e.target.value ? parseInt(e.target.value) : '')}
+                placeholder={suggestedEpisodeNumber.toString()}
+                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              Next suggested: Ep{suggestedEpisodeNumber}
+            </p>
+          </div>
+
           {/* TX Date & Time */}
           <div className="grid grid-cols-2 gap-4">
             <div>

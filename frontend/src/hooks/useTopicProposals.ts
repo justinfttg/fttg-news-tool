@@ -5,6 +5,7 @@ import {
   generateTopicProposals,
   updateTopicProposal,
   deleteTopicProposal,
+  resynthesizeProposal,
   previewClusters,
   getTopicGeneratorSettings,
   updateTopicGeneratorSettings,
@@ -99,6 +100,25 @@ export function useDeleteProposal(_projectId: string) {
       queryClient.removeQueries({
         queryKey: topicProposalKeys.detail(deletedId),
       });
+      // Invalidate lists
+      queryClient.invalidateQueries({
+        queryKey: topicProposalKeys.lists(),
+      });
+    },
+  });
+}
+
+export function useResynthesizeProposal(_projectId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => resynthesizeProposal(id),
+    onSuccess: (updatedProposal) => {
+      // Update the cache for this specific proposal
+      queryClient.setQueryData(
+        topicProposalKeys.detail(updatedProposal.id),
+        updatedProposal
+      );
       // Invalidate lists
       queryClient.invalidateQueries({
         queryKey: topicProposalKeys.lists(),

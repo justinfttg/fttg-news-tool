@@ -18,7 +18,6 @@ import projectCreateHandler from '../api/projects/create';
 import projectListHandler from '../api/projects/list';
 import projectInviteHandler from '../api/projects/invite';
 import projectMembersHandler from '../api/projects/members';
-import calendarScheduleHandler from '../api/calendar/schedule';
 import {
   listHandler as calendarListHandler,
   createHandler as calendarCreateHandler,
@@ -77,7 +76,6 @@ app.get('/api/calendar/items', authMiddleware, calendarListHandler);
 app.post('/api/calendar/items', authMiddleware, calendarCreateHandler);
 app.put('/api/calendar/items/:id', authMiddleware, calendarUpdateHandler);
 app.delete('/api/calendar/items/:id', authMiddleware, calendarDeleteHandler);
-app.post('/api/calendar/schedule', authMiddleware, calendarScheduleHandler);
 
 // News routes
 app.get('/api/news/feed', authMiddleware, newsFeedHandler);

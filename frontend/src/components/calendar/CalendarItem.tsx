@@ -1,4 +1,4 @@
-import type { CalendarItem as CalendarItemType } from '../../types';
+import type { CalendarItem as CalendarItemType, ProductionEpisode } from '../../types';
 
 const statusConfig: Record<CalendarItemType['status'], { bg: string; text: string; label: string }> = {
   draft:            { bg: 'bg-gray-100',   text: 'text-gray-700',   label: 'Draft' },
@@ -33,17 +33,27 @@ export const statusTextColors: Record<CalendarItemType['status'], string> = {
 
 interface CalendarItemProps {
   item: CalendarItemType;
+  episode?: ProductionEpisode;
 }
 
-export function CalendarItemContent({ item }: CalendarItemProps) {
+export function CalendarItemContent({ item, episode }: CalendarItemProps) {
   const config = statusConfig[item.status];
   // Show title if there's a news story or an episode linked
-  const hasContent = !!item.news_story_id || !!(item as any).episode_id;
+  const hasContent = !!item.news_story_id || !!(item as any).episode_id || !!episode;
+
+  // Format display title with episode number if available
+  const displayTitle = (() => {
+    if (!hasContent) return 'Empty Slot';
+    if (episode?.episode_number) {
+      return `Ep${episode.episode_number}: ${item.title}`;
+    }
+    return item.title;
+  })();
 
   return (
     <div className="px-1 py-0.5 text-xs leading-tight overflow-hidden w-full">
       <div className="font-medium truncate">
-        {hasContent ? item.title : 'Empty Slot'}
+        {displayTitle}
       </div>
       <div className="flex items-center gap-1 mt-0.5">
         <span className={`inline-block px-1 rounded ${config.bg} ${config.text}`} style={{ fontSize: '10px' }}>
