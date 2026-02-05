@@ -94,7 +94,7 @@ export default function ProposalViewModal({
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
         <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
           {/* Header */}
-          <div className="flex items-start justify-between px-6 py-4 border-b">
+          <div className="flex items-start justify-between px-6 py-4 border-b flex-shrink-0">
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-2">
                 <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${statusColor}`}>
@@ -138,7 +138,7 @@ export default function ProposalViewModal({
           </div>
 
           {/* Tabs */}
-          <div className="flex border-b px-6 overflow-x-auto">
+          <div className="flex border-b px-6 overflow-x-auto flex-shrink-0 bg-white">
             <button
               onClick={() => setActiveTab('details')}
               className={`px-4 py-3 text-sm font-medium border-b-2 -mb-px whitespace-nowrap ${
