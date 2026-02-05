@@ -54,6 +54,7 @@ async function verifyMembership(
 
 // ============================================================================
 // GET /api/topics/proposals/:id
+// Updated: 2026-02-05 - Added linked_episode_id support
 // ============================================================================
 
 export async function getHandler(req: Request, res: Response) {
